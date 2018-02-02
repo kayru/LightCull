@@ -1,0 +1,2 @@
+add_library(par_shapes INTERFACE)
+target_include_directories(par_shapes INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
