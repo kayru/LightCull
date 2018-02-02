@@ -5,6 +5,13 @@ project(LightCull)
 
 set(RUSH_RENDER_API "VK" CACHE STRING "Force Vulkan renderer")
 
+if(MSVC)
+	set(OPT_FLAGS "/O2 /Ob2 /Oi /fp:fast /fp:except- /GS-")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} ${OPT_FLAGS}")
+	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${OPT_FLAGS}")
+endif()
+
 # TODO: bundle prebuilt glslc in this repo for windows and linux
 find_program(GLSLC NAMES glslc PATHS
     $ENV{VK_SDK_PATH}/Bin

@@ -1,0 +1,75 @@
+#version 450
+
+#include "ShaderDefines.h"
+#include "LightingCommon.glsl"
+
+struct LightTreeNode
+{
+	float center;
+	float radius;
+	uint lightOffset;
+	uint params; // 16 bits light count, 1 bit leaf flag, 15 bits skip count
+};
+
+layout (std430, binding = 8) buffer LightTreeBuffer
+{
+	LightTreeNode g_lightTree[];
+};
+
+struct LightTileInfo
+{
+	uint lightOffset;
+	uint lightCount;
+	uint treeOffset;
+	uint treeCount;
+};
+
+layout (std140, binding = 9) readonly buffer TileInfoBuffer
+{
+	LightTileInfo g_lightTileInfo[];
+};
+
+layout(std430, binding = 10) buffer TileStatsBuffer
+{
+	uint g_tileStats[]; // output
+};
+
+vec3 getViewSpacePosition(ivec2 pixelPos)
+{
+	vec2 uv = vec2(pixelPos) / vec2(g_outputWidth, g_outputHeight);
+	float depth = texelFetch(gbufferDepthImage, pixelPos, 0).r;
+	return positionFromDepthBuffer(uv, depth);
+}
+
+shared uint g_treeUsedCount;
+
+layout(local_size_x = 8, local_size_y = 8) in;
+void main()
+{
+	ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy) + ivec2(g_offsetX, g_offsetY);
+
+	uint tileCountX = divUp(g_outputWidth, g_tileSize);
+	uint tileCountY = divUp(g_outputHeight, g_tileSize);
+	uint tilesPerSlice = tileCountX*tileCountY;
+
+	ivec2 tilePos = pixelPos / ivec2(g_tileSize);
+
+	vec3 viewSpacePosition = getViewSpacePosition(pixelPos);
+
+	uint lightGridSlice = computeSliceIndex(viewSpacePosition.z);
+	uint lightGridIndex = tilePos.x + tilePos.y*tileCountX + lightGridSlice*tilesPerSlice;
+
+	LightTileInfo tileInfo = g_lightTileInfo[lightGridIndex];
+
+	g_treeUsedCount = 0;
+
+	groupMemoryBarrierWithGroupSync();
+
+	if (tileInfo.treeCount > 1)
+	{
+		atomicAdd(g_treeUsedCount, 1);
+	}
+
+	uint statsOutputIndex = gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x;
+	g_tileStats[statsOutputIndex] = g_treeUsedCount;
+}

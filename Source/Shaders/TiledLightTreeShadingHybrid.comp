@@ -1,0 +1,102 @@
+#version 450
+
+#extension GL_ARB_shader_group_vote : enable
+#extension GL_ARB_shader_ballot : enable
+
+layout(constant_id = 0) const bool g_enableDebugVisualization = false;
+layout(constant_id = 1) const uint g_threadGroupSizeX = 8;
+layout(constant_id = 2) const uint g_threadGroupSizeY = 8;
+
+#include "ShaderDefines.h"
+#include "TiledLightTreeShadingCommon.glsl"
+
+shared LightTreeNode g_localLightTree[127];
+
+layout(local_size_x_id  = 1, local_size_y_id = 2) in;
+void main()
+{
+	ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy) + ivec2(g_offsetX, g_offsetY);
+
+	if (pixelPos.x >= g_outputWidth ||
+		pixelPos.y >= g_outputHeight)
+	{
+		return;
+	}
+
+	vec2 uv = vec2(pixelPos) / vec2(g_outputWidth, g_outputHeight);
+	float depth = texelFetch(gbufferDepthImage, pixelPos, 0).r;
+
+	if (depth == 1.0)
+	{
+		imageStore(outputImage, pixelPos, vec4(0.0, 0.0, 0.0, 1.0));
+		return;
+	}
+
+	vec3 viewSpacePosition = positionFromDepthBuffer(uv, depth);
+	vec3 toCamera = -viewSpacePosition;
+
+	Surface surface;
+	surface.position = viewSpacePosition;
+	surface.F0 = 1.0;
+
+	uint tileCountX = divUp(g_outputWidth, g_tileSize);
+	uint tileCountY = divUp(g_outputHeight, g_tileSize);
+	uint tilesPerSlice = tileCountX*tileCountY;
+
+	ivec2 tilePos = pixelPos / ivec2(g_tileSize);
+
+	uint lightGridSlice = computeSliceIndex(surface.position.z);
+	uint lightGridIndex = tilePos.x + tilePos.y*tileCountX + lightGridSlice*tilesPerSlice;
+
+	LightTileInfo tileInfo = g_lightTileInfo[lightGridIndex];
+
+	if (g_enableDebugVisualization && g_debugMode!=0)
+	{
+		imageStore(outputImage, pixelPos, getDebugOutput(surface, tileInfo));
+		return;
+	}
+
+	uint visitedNodeLimit = 500; // sanity-check
+	uint visitedNodes = 0;
+
+	surface.toCameraNormalized = toCamera / length(toCamera);
+	surface.normal = normalize(texelFetch(gbufferNormalImage, pixelPos, 0).xyz) * mat3(g_matView); // TODO: could just store view space normals in the gbuffer;
+	surface.roughness = texelFetch(gbufferRoughnessImage, pixelPos, 0).r;
+
+	vec3 lighting = evaluateAmbientLighting(surface);
+
+	uint nodeIndex = 0;
+
+	while(nodeIndex < tileInfo.treeNodeCount)
+	{
+		#if 0 // sanity-check
+		if (visitedNodes >= visitedNodeLimit) break;
+		#endif
+
+		LightTreeNode node = g_lightTreeBuffer[nodeIndex + tileInfo.treeOffset];
+		visitedNodes++;
+
+		bool nodeHit = abs(node.center - surface.position.z) < node.radius;
+
+		if (nodeHit)
+		{
+			if (getIsLeaf(node))
+			{
+				uint lightOffset = node.lightOffset;
+				uint lightCount = getLightCount(node);
+				for (uint i=0; i<lightCount; ++i)
+				{
+					LightSource light = getLight(lightOffset + i);
+					accumulateSurfaceLighting(surface, light, lighting);
+				}
+			}
+		}
+
+		nodeIndex += nodeHit ? 1 : getSkipCount(node);
+	}
+
+	surface.baseColor = texelFetch(gbufferBaseColorImage, pixelPos, 0).xyz;
+	vec3 res = surface.baseColor * lighting;
+
+	imageStore(outputImage, pixelPos, vec4(res, 1.0));
+}

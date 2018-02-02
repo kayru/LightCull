@@ -1,0 +1,45 @@
+#version 450
+
+#include "ShaderDefines.h"
+
+layout(binding = 0, rgba16f) uniform image2D outputImage;
+
+layout(std430, binding = 1) readonly buffer TileStatsBuffer
+{
+	uint g_tileStats[];
+};
+
+layout(push_constant) uniform PushConstants
+{
+	uint tileSize;
+	uint outputWidth;
+} pushConstants;
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+void main()
+{
+	ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 tilePos = pixelPos / ivec2(pushConstants.tileSize);
+
+	uint statsOutputIndex = gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x;
+	uint counter = g_tileStats[statsOutputIndex];
+
+	vec3 res;
+	if (counter == 0)
+	{
+		res = vec3(0.2, 0.2, 0.7);
+	}
+	else if (counter == 64)
+	{
+		res = vec3(0.2, 0.7, 0.2);
+	}
+	else
+	{
+		res = vec3(1.0, 1.0, 1.0);
+	}
+
+	vec4 pixel = imageLoad(outputImage, pixelPos);
+	pixel.rgb = mix(pixel.rgb, res, 0.5);
+	imageStore(outputImage, pixelPos, pixel);
+}

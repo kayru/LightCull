@@ -1,0 +1,111 @@
+#version 450
+
+#extension GL_ARB_shader_group_vote : enable
+#extension GL_ARB_shader_ballot : enable
+
+layout(constant_id = 0) const bool g_enableDebugVisualization = false;
+layout(constant_id = 1) const uint g_threadGroupSizeX = 8;
+layout(constant_id = 2) const uint g_threadGroupSizeY = 8;
+
+#include "ShaderDefines.h"
+#include "Common.glsl"
+#include "LightingCommon.glsl"
+
+struct LightCellInfo
+{
+	uint lightOffset;
+	uint lightCount;
+	uint pad0;
+	uint pad1;
+};
+
+layout(std140, binding = 8) readonly buffer LightGridBuffer
+{
+	LightCellInfo g_lightGrid[];
+};
+
+layout(binding = 9, r32ui) uniform readonly uimageBuffer g_lightIndices;
+
+LightSource getLight(uint lightIndex)
+{
+#if ENABLE_LIGHT_INDEX_BUFFER
+	return g_lights[imageLoad(g_lightIndices, int(lightIndex)).x];
+#else
+	return g_lights[lightIndex];
+#endif
+}
+
+layout(local_size_x_id  = 1, local_size_y_id = 2) in;
+void main()
+{
+	ivec2 pixelPos = ivec2(gl_GlobalInvocationID.xy) + ivec2(g_offsetX, g_offsetY);
+
+	if (pixelPos.x >= g_outputWidth ||
+		pixelPos.y >= g_outputHeight)
+	{
+		return;
+	}
+
+	vec2 uv = vec2(pixelPos) / vec2(g_outputWidth, g_outputHeight);
+	float depth = texelFetch(gbufferDepthImage, pixelPos, 0).r;
+	vec3 viewSpacePosition = positionFromDepthBuffer(uv, depth);
+	vec3 toCamera = -viewSpacePosition;
+
+	Surface surface;
+	surface.position = viewSpacePosition;
+	surface.baseColor = texelFetch(gbufferBaseColorImage, pixelPos, 0).xyz;
+	surface.normal = normalize(texelFetch(gbufferNormalImage, pixelPos, 0).xyz) * mat3(g_matView); // TODO: could just store view space normals in the gbuffer;
+	surface.roughness = texelFetch(gbufferRoughnessImage, pixelPos, 0).r;
+	surface.F0 = 1.0;
+
+	if (depth == 1.0)
+	{
+		imageStore(outputImage, pixelPos, vec4(0.0, 0.0, 0.0, 1.0));
+		return;
+	}
+
+	uint tileCountX = divUp(g_outputWidth, g_tileSize);
+	uint tileCountY = divUp(g_outputHeight, g_tileSize);
+	uint tilesPerSlice = tileCountX*tileCountY;
+
+	ivec2 tilePos = pixelPos / ivec2(g_tileSize);
+
+	uint lightGridSlice = computeSliceIndex(surface.position.z);
+	uint lightGridIndex = tilePos.x + tilePos.y*tileCountX + lightGridSlice*tilesPerSlice;
+
+	LightCellInfo cellInfo = g_lightGrid[lightGridIndex];
+
+	uint visitedNodes = 0; // TODO: compute using wave ops
+	uint visitedLights = 0; // TODO: compute using wave ops
+	uint contributingLights = 0;
+
+	float distanceToCamera = length(toCamera);
+	surface.toCameraNormalized = toCamera / distanceToCamera;
+
+	vec3 lighting = evaluateAmbientLighting(surface);
+
+	for (uint i = 0; i < cellInfo.lightCount; ++i)
+	{
+		uint lightIndex = i + cellInfo.lightOffset;
+		LightSource light = getLight(lightIndex);
+		accumulateSurfaceLighting(surface, light, lighting);
+
+		if (length(light.position - surface.position) < light.attenuationEnd)
+		{
+			contributingLights++;
+		}
+	}
+
+	visitedLights += cellInfo.lightCount;
+
+	vec3 res = surface.baseColor * lighting;
+
+	if (g_enableDebugVisualization && g_debugMode!=0)
+	{
+		imageStore(outputImage, pixelPos, getDebugOutput(visitedNodes, visitedLights, contributingLights));
+	}
+	else
+	{
+		imageStore(outputImage, pixelPos, vec4(res, 1.0));
+	}
+}
