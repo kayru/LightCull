@@ -1,0 +1,11 @@
+.DS_Store
+Build
+*.spv
+*.sublime-workspace
+Paper/output
+PaperJCGT/output
+/.vscode/*
+*.user
+.vs
+x64
+spvLogInfo.txt
