@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 	g_appConfig.resizable = true;
 
 #ifdef _DEBUG
-	// g_appConfig.debug         = true;
+	g_appConfig.debug = true; // Enable validation layers
 	Log::breakOnError = true;
 #endif
 
