@@ -623,9 +623,9 @@ void LightCullApp::buildLighting(GfxContext* ctx)
 	m_tiledLightTreeBuilderParams.resolution              = outputResolution;
 	m_tiledLightTreeBuilderParams.tileSize                = m_tileSize;
 	m_tiledLightTreeBuilderParams.calculateTileLightCount = m_drawTileGrid;
-	m_tiledLightTreeBuilderParams.useTileFrustumCulling   = m_useTileFrustumCulling;
+	m_tiledLightTreeBuilderParams.useTileFrustumCulling   = !!m_useTileFrustumCulling;
 	m_clusteredLightBuilderParams.calculateTileLightCount = m_drawTileGrid;
-	m_clusteredLightBuilderParams.useTileFrustumCulling   = m_useTileFrustumCulling;
+	m_clusteredLightBuilderParams.useTileFrustumCulling   = !!m_useTileFrustumCulling;
 
 	if (m_lightingMode == LightingMode::Hybrid)
 	{
