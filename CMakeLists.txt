@@ -14,18 +14,19 @@ endif()
 
 # TODO: bundle prebuilt glslc in this repo for windows and linux
 find_program(GLSLC NAMES glslc PATHS
-    $ENV{VK_SDK_PATH}/Bin
-    $ENV{PATH}
-    "~/bin"
+	$ENV{VULKAN_SDK}/Bin
+	$ENV{VK_SDK_PATH}/Bin
+	$ENV{PATH}
+	"~/bin"
 )
 
 function(shader_compile_rule shaderName dependencies)
-    add_custom_command(
-        OUTPUT ${CMAKE_CFG_INTDIR}/${shaderName}.spv
-        COMMAND ${GLSLC} -o ${CMAKE_CFG_INTDIR}/${shaderName}.spv ${CMAKE_CURRENT_SOURCE_DIR}/${shaderName}
-        MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${shaderName}
-        DEPENDS ${dependencies}
-    )
+	add_custom_command(
+		OUTPUT ${CMAKE_CFG_INTDIR}/${shaderName}.spv
+		COMMAND ${GLSLC} -o ${CMAKE_CFG_INTDIR}/${shaderName}.spv ${CMAKE_CURRENT_SOURCE_DIR}/${shaderName}
+		MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${shaderName}
+		DEPENDS ${dependencies}
+	)
 endfunction(shader_compile_rule)
 
 # Enable the AMD Vulkan GLSL/SPIR-V extensions
