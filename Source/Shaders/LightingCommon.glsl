@@ -33,15 +33,17 @@ layout (binding = 0) uniform LightingConstants
 	uint g_useShallowTree;
 };
 
-layout (binding = 1) uniform sampler2D gbufferBaseColorImage;
-layout (binding = 2) uniform sampler2D gbufferNormalImage;
-layout (binding = 3) uniform sampler2D gbufferRoughnessImage;
-layout (binding = 4) uniform sampler2D gbufferDepthImage;
-layout (binding = 5) uniform sampler2D falseColorImage;
+layout (binding = 1) uniform sampler defaultSampler;
 
-layout(binding = 6, rgba16f) uniform image2D outputImage;
+layout (binding = 2) uniform texture2D gbufferBaseColorImage;
+layout (binding = 3) uniform texture2D gbufferNormalImage;
+layout (binding = 4) uniform texture2D gbufferRoughnessImage;
+layout (binding = 5) uniform texture2D gbufferDepthImage;
+layout (binding = 6) uniform texture2D falseColorImage;
 
-layout (std140, binding = 7) buffer LightBuffer
+layout(binding = 7, rgba16f) uniform image2D outputImage;
+
+layout (std140, binding = 8) buffer LightBuffer
 {
 	LightSource g_lights[]; // light sources in view space
 };
@@ -105,7 +107,7 @@ vec3 overdrawPseudoColor(float overdraw, float range)
 	float t = (1.0-min(overdraw / range, 1.0)) * 0.65;
 	return HSVtoRGB(vec3(t, 1.0, overdraw==0 ? 0.0 : 1.0));
 #else
-	return texture(falseColorImage, vec2(overdraw / range, 0.5)).xyz;
+	return texture(sampler2D(falseColorImage, defaultSampler), vec2(overdraw / range, 0.5)).xyz;
 #endif
 }
 
@@ -139,13 +141,13 @@ vec4 getDebugOutput(uint visitedNodes, uint visitedLights, uint contributingLigh
 
 Surface getSurface(ivec2 pixelPos)
 {
-	vec4 gbufferBaseColor = texelFetch(gbufferBaseColorImage, pixelPos, 0);
-	vec4 gbufferRoughness = texelFetch(gbufferRoughnessImage, pixelPos, 0);
-	vec3 worldNormal = normalize(texelFetch(gbufferNormalImage, pixelPos, 0).xyz);
+	vec4 gbufferBaseColor = texelFetch(sampler2D(gbufferBaseColorImage, defaultSampler), pixelPos, 0);
+	vec4 gbufferRoughness = texelFetch(sampler2D(gbufferRoughnessImage, defaultSampler), pixelPos, 0);
+	vec3 worldNormal = normalize(texelFetch(sampler2D(gbufferNormalImage, defaultSampler), pixelPos, 0).xyz);
 	vec3 viewSpaceNormal = worldNormal * mat3(g_matView); // TODO: could just store view space normals in the gbuffer
 
 	vec2 uv = vec2(pixelPos) / vec2(g_outputWidth, g_outputHeight);
-	float depth = texelFetch(gbufferDepthImage, pixelPos, 0).r;
+	float depth = texelFetch(sampler2D(gbufferDepthImage, defaultSampler), pixelPos, 0).r;
 	vec3 viewSpacePosition = positionFromDepthBuffer(uv, depth);
 	vec3 toCamera = -viewSpacePosition;
 	float distanceToCamera = length(toCamera);

@@ -484,10 +484,12 @@ void LightCullApp::transcodeGbuffer()
 
 	Gfx_SetTechnique(m_ctx, m_techniqueGbufferTranscode);
 
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, m_staticGbuffer.depth, m_samplerStates.pointClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, m_staticGbuffer.albedo, m_samplerStates.pointClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, m_staticGbuffer.normals, m_samplerStates.pointClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 3, m_staticGbuffer.specularRM, m_samplerStates.pointClamp);
+	Gfx_SetSampler(m_ctx, GfxStage::Pixel, 0, m_samplerStates.pointClamp);
+
+	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, m_staticGbuffer.depth);
+	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, m_staticGbuffer.albedo);
+	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, m_staticGbuffer.normals);
+	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 3, m_staticGbuffer.specularRM);
 
 	Gfx_Draw(m_ctx, 0, 3);
 
@@ -538,15 +540,17 @@ void LightCullApp::drawGbuffer()
 
 		if (currentMaterial != segment.material)
 		{
+			Gfx_SetSampler(m_ctx, GfxStage::Pixel, 0, m_samplerAniso8);
+
 			if (segment.material != 0xFFFFFFFF)
 			{
 				const Material& material = m_materials[segment.material];
 
 				instanceConstants.baseColor = material.baseColor;
 
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, material.albedoTexture, m_samplerAniso8);
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, material.normalTexture, m_samplerAniso8);
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, material.roughnessTexture, m_samplerAniso8);
+				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, material.albedoTexture);
+				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, material.normalTexture);
+				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, material.roughnessTexture);
 
 				instanceConstants.useNormalMap = material.normalTexture == m_defaultNormalTexture ? 0 : 1;
 			}
@@ -554,9 +558,9 @@ void LightCullApp::drawGbuffer()
 			{
 				instanceConstants.baseColor = Vec4(1.0f);
 
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, m_defaultAlbedoTexture, m_samplerAniso8);
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, m_defaultNormalTexture, m_samplerAniso8);
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, m_defaultRoughnessTexture, m_samplerAniso8);
+				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, m_defaultAlbedoTexture);
+				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, m_defaultNormalTexture);
+				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, m_defaultRoughnessTexture);
 
 				instanceConstants.useNormalMap = 0;
 			}
@@ -748,11 +752,12 @@ void LightCullApp::applyLighting()
 	// submit data to gpu
 
 	Gfx_SetConstantBuffer(m_ctx, 0, m_lightingConstantBuffer);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 0, m_gbufferBaseColor, m_samplerStates.linearClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 1, m_gbufferNormal, m_samplerStates.linearClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 2, m_gbufferRoughness, m_samplerStates.linearClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 3, m_gbufferDepth, m_samplerStates.linearClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 4, m_falseColorTexture.get(), m_samplerStates.linearClamp);
+	Gfx_SetSampler(m_ctx, GfxStage::Compute, 0, m_samplerStates.linearClamp);
+	Gfx_SetTexture(m_ctx, GfxStage::Compute, 0, m_gbufferBaseColor);
+	Gfx_SetTexture(m_ctx, GfxStage::Compute, 1, m_gbufferNormal);
+	Gfx_SetTexture(m_ctx, GfxStage::Compute, 2, m_gbufferRoughness);
+	Gfx_SetTexture(m_ctx, GfxStage::Compute, 3, m_gbufferDepth);
+	Gfx_SetTexture(m_ctx, GfxStage::Compute, 4, m_falseColorTexture.get());
 	Gfx_SetStorageImage(m_ctx, GfxStage::Compute, 0, m_finalFrame);
 
 	const u32 debugVisualizationEnabled = m_viewMode == ViewMode::Final ? 0 : 1;
@@ -829,10 +834,13 @@ void LightCullApp::generateTileStats()
 	Gfx_SetTechnique(m_ctx, m_techniqueTileStatsGenerate);
 
 	Gfx_SetConstantBuffer(m_ctx, 0, m_lightingConstantBuffer);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 0, m_gbufferBaseColor, m_samplerStates.linearClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 1, m_gbufferNormal, m_samplerStates.linearClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 2, m_gbufferRoughness, m_samplerStates.linearClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 3, m_gbufferDepth, m_samplerStates.linearClamp);
+
+	Gfx_SetSampler(m_ctx, GfxStage::Compute, 0, m_samplerStates.linearClamp);
+
+	Gfx_SetTexture(m_ctx, GfxStage::Compute, 0, m_gbufferBaseColor);
+	Gfx_SetTexture(m_ctx, GfxStage::Compute, 1, m_gbufferNormal);
+	Gfx_SetTexture(m_ctx, GfxStage::Compute, 2, m_gbufferRoughness);
+	Gfx_SetTexture(m_ctx, GfxStage::Compute, 3, m_gbufferDepth);
 	Gfx_SetStorageImage(m_ctx, GfxStage::Compute, 0, m_finalFrame);
 
 	Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 0, m_lightSourceBuffer);
@@ -1247,9 +1255,11 @@ void LightCullApp::drawDebugSpheres()
 	InstanceConstants instanceConstants;
 	instanceConstants.baseColor = Vec4(0.1f);
 
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, m_defaultAlbedoTexture, m_samplerAniso8);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, m_defaultNormalTexture, m_samplerAniso8);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, m_defaultRoughnessTexture, m_samplerAniso8);
+	Gfx_SetSampler(m_ctx, GfxStage::Pixel, 0, m_samplerAniso8);
+
+	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, m_defaultAlbedoTexture);
+	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, m_defaultNormalTexture);
+	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, m_defaultRoughnessTexture);
 
 	instanceConstants.useNormalMap = 0;
 
@@ -1591,9 +1601,10 @@ void LightCullApp::createShaders()
 		u32               bindingIndex = 0;
 		bindings.addConstantBuffer("SceneConstants", bindingIndex++);
 		bindings.addConstantBuffer("InstanceConstants", bindingIndex++);
-		bindings.addSampler("s_albedo", bindingIndex++);
-		bindings.addSampler("s_normal", bindingIndex++);
-		bindings.addSampler("s_roughness", bindingIndex++);
+		bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+		bindings.addTexture("s_albedo", bindingIndex++);
+		bindings.addTexture("s_normal", bindingIndex++);
+		bindings.addTexture("s_roughness", bindingIndex++);
 
 		GfxTechniqueDesc desc(ps, vs, vf, &bindings);
 		desc.waveLimits[u32(GfxStage::Pixel)] = 0.25f;
@@ -1614,10 +1625,11 @@ void LightCullApp::createShaders()
 
 		GfxShaderBindings bindings;
 		u32               bindingIndex = 0;
-		bindings.addSampler("s_depth", bindingIndex++);
-		bindings.addSampler("s_albedo", bindingIndex++);
-		bindings.addSampler("s_normal", bindingIndex++);
-		bindings.addSampler("s_roughness", bindingIndex++);
+		bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+		bindings.addTexture("s_depth", bindingIndex++);
+		bindings.addTexture("s_albedo", bindingIndex++);
+		bindings.addTexture("s_normal", bindingIndex++);
+		bindings.addTexture("s_roughness", bindingIndex++);
 		m_techniqueGbufferTranscode.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(ps, vs, vf, &bindings)));
 
 		Gfx_Release(ps);
@@ -1647,11 +1659,12 @@ void LightCullApp::createShaders()
 			GfxShaderBindings bindings;
 			u32               bindingIndex = 0;
 			bindings.addConstantBuffer("LightingConstants", bindingIndex++);
-			bindings.addSampler("gbufferBaseColorImage", bindingIndex++);
-			bindings.addSampler("gbufferNormalImage", bindingIndex++);
-			bindings.addSampler("gbufferRoughnessImage", bindingIndex++);
-			bindings.addSampler("gbufferDepthImage", bindingIndex++);
-			bindings.addSampler("falseColorImage", bindingIndex++);
+			bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+			bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
+			bindings.addTexture("gbufferNormalImage", bindingIndex++);
+			bindings.addTexture("gbufferRoughnessImage", bindingIndex++);
+			bindings.addTexture("gbufferDepthImage", bindingIndex++);
+			bindings.addTexture("falseColorImage", bindingIndex++);
 			bindings.addStorageImage("outputImage", bindingIndex++);
 			bindings.addStorageBuffer("LightBuffer", bindingIndex++);
 			bindings.addStorageBuffer("LightTreeBuffer", bindingIndex++);
@@ -1678,11 +1691,12 @@ void LightCullApp::createShaders()
 			GfxShaderBindings bindings;
 			u32               bindingIndex = 0;
 			bindings.addConstantBuffer("LightingConstants", bindingIndex++);
-			bindings.addSampler("gbufferBaseColorImage", bindingIndex++);
-			bindings.addSampler("gbufferNormalImage", bindingIndex++);
-			bindings.addSampler("gbufferRoughnessImage", bindingIndex++);
-			bindings.addSampler("gbufferDepthImage", bindingIndex++);
-			bindings.addSampler("falseColorImage", bindingIndex++);
+			bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+			bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
+			bindings.addTexture("gbufferNormalImage", bindingIndex++);
+			bindings.addTexture("gbufferRoughnessImage", bindingIndex++);
+			bindings.addTexture("gbufferDepthImage", bindingIndex++);
+			bindings.addTexture("falseColorImage", bindingIndex++);
 			bindings.addStorageImage("outputImage", bindingIndex++);
 			bindings.addStorageBuffer("LightBuffer", bindingIndex++);
 			bindings.addStorageBuffer("LightTreeBuffer", bindingIndex++);
@@ -1737,11 +1751,12 @@ void LightCullApp::createShaders()
 			GfxShaderBindings bindings;
 			u32               bindingIndex = 0;
 			bindings.addConstantBuffer("LightingConstants", bindingIndex++);
-			bindings.addSampler("gbufferBaseColorImage", bindingIndex++);
-			bindings.addSampler("gbufferNormalImage", bindingIndex++);
-			bindings.addSampler("gbufferRoughnessImage", bindingIndex++);
-			bindings.addSampler("gbufferDepthImage", bindingIndex++);
-			bindings.addSampler("falseColorImage", bindingIndex++);
+			bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+			bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
+			bindings.addTexture("gbufferNormalImage", bindingIndex++);
+			bindings.addTexture("gbufferRoughnessImage", bindingIndex++);
+			bindings.addTexture("gbufferDepthImage", bindingIndex++);
+			bindings.addTexture("falseColorImage", bindingIndex++);
 			bindings.addStorageImage("outputImage", bindingIndex++);
 			bindings.addStorageBuffer("LightBuffer", bindingIndex++);
 			bindings.addStorageBuffer("LightTileInfoBuffer", bindingIndex++);
@@ -1795,11 +1810,11 @@ void LightCullApp::createShaders()
 		GfxShaderBindings bindings;
 		u32               bindingIndex = 0;
 		bindings.addConstantBuffer("LightingConstants", bindingIndex++);
-		bindings.addSampler("gbufferBaseColorImage", bindingIndex++);
-		bindings.addSampler("gbufferNormalImage", bindingIndex++);
-		bindings.addSampler("gbufferRoughnessImage", bindingIndex++);
-		bindings.addSampler("gbufferDepthImage", bindingIndex++);
-		bindings.addSampler("falseColorRamp", bindingIndex++);
+		bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
+		bindings.addTexture("gbufferNormalImage", bindingIndex++);
+		bindings.addTexture("gbufferRoughnessImage", bindingIndex++);
+		bindings.addTexture("gbufferDepthImage", bindingIndex++);
+		bindings.addTexture("falseColorRamp", bindingIndex++);
 		bindings.addStorageImage("outputImage", bindingIndex++);
 		bindings.addStorageBuffer("LightBuffer", bindingIndex++);
 		bindings.addStorageBuffer("LightTreeBuffer", bindingIndex++);

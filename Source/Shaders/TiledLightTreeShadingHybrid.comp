@@ -24,7 +24,7 @@ void main()
 	}
 
 	vec2 uv = vec2(pixelPos) / vec2(g_outputWidth, g_outputHeight);
-	float depth = texelFetch(gbufferDepthImage, pixelPos, 0).r;
+	float depth = texelFetch(sampler2D(gbufferDepthImage, defaultSampler), pixelPos, 0).r;
 
 	if (depth == 1.0)
 	{
@@ -60,8 +60,8 @@ void main()
 	uint visitedNodes = 0;
 
 	surface.toCameraNormalized = toCamera / length(toCamera);
-	surface.normal = normalize(texelFetch(gbufferNormalImage, pixelPos, 0).xyz) * mat3(g_matView); // TODO: could just store view space normals in the gbuffer;
-	surface.roughness = texelFetch(gbufferRoughnessImage, pixelPos, 0).r;
+	surface.normal = normalize(texelFetch(sampler2D(gbufferNormalImage, defaultSampler), pixelPos, 0).xyz) * mat3(g_matView); // TODO: could just store view space normals in the gbuffer;
+	surface.roughness = texelFetch(sampler2D(gbufferRoughnessImage, defaultSampler), pixelPos, 0).r;
 
 	vec3 lighting = evaluateAmbientLighting(surface);
 
@@ -95,7 +95,7 @@ void main()
 		nodeIndex += nodeHit ? 1 : getSkipCount(node);
 	}
 
-	surface.baseColor = texelFetch(gbufferBaseColorImage, pixelPos, 0).xyz;
+	surface.baseColor = texelFetch(sampler2D(gbufferBaseColorImage, defaultSampler), pixelPos, 0).xyz;
 	vec3 res = surface.baseColor * lighting;
 
 	imageStore(outputImage, pixelPos, vec4(res, 1.0));

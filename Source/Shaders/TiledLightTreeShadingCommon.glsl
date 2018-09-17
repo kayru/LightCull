@@ -4,17 +4,17 @@
 #include "LightingCommon.glsl"
 #include "TiledLightTreeTypes.glsl"
 
-layout (std430, binding = 8) readonly buffer LightTreeBuffer
+layout (std430, binding = 9) readonly buffer LightTreeBuffer
 {
 	LightTreeNode g_lightTreeBuffer[];
 };
 
-layout (std140, binding = 9) readonly buffer LightTileInfoBuffer
+layout (std140, binding = 10) readonly buffer LightTileInfoBuffer
 {
 	LightTileInfo g_lightTileInfo[];
 };
 
-layout(binding = 10, r32ui) uniform readonly uimageBuffer g_lightIndices;
+layout(binding = 11, r32ui) uniform readonly uimageBuffer g_lightIndices;
 
 LightSource getLight(uint lightIndex)
 {

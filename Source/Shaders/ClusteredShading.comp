@@ -19,12 +19,12 @@ struct LightCellInfo
 	uint pad1;
 };
 
-layout(std140, binding = 8) readonly buffer LightGridBuffer
+layout(std140, binding = 9) readonly buffer LightGridBuffer
 {
 	LightCellInfo g_lightGrid[];
 };
 
-layout(binding = 9, r32ui) uniform readonly uimageBuffer g_lightIndices;
+layout(binding = 10, r32ui) uniform readonly uimageBuffer g_lightIndices;
 
 LightSource getLight(uint lightIndex)
 {
@@ -47,15 +47,15 @@ void main()
 	}
 
 	vec2 uv = vec2(pixelPos) / vec2(g_outputWidth, g_outputHeight);
-	float depth = texelFetch(gbufferDepthImage, pixelPos, 0).r;
+	float depth = texelFetch(sampler2D(gbufferDepthImage, defaultSampler), pixelPos, 0).r;
 	vec3 viewSpacePosition = positionFromDepthBuffer(uv, depth);
 	vec3 toCamera = -viewSpacePosition;
 
 	Surface surface;
 	surface.position = viewSpacePosition;
-	surface.baseColor = texelFetch(gbufferBaseColorImage, pixelPos, 0).xyz;
-	surface.normal = normalize(texelFetch(gbufferNormalImage, pixelPos, 0).xyz) * mat3(g_matView); // TODO: could just store view space normals in the gbuffer;
-	surface.roughness = texelFetch(gbufferRoughnessImage, pixelPos, 0).r;
+	surface.baseColor = texelFetch(sampler2D(gbufferBaseColorImage, defaultSampler), pixelPos, 0).xyz;
+	surface.normal = normalize(texelFetch(sampler2D(gbufferNormalImage, defaultSampler), pixelPos, 0).xyz) * mat3(g_matView); // TODO: could just store view space normals in the gbuffer;
+	surface.roughness = texelFetch(sampler2D(gbufferRoughnessImage, defaultSampler), pixelPos, 0).r;
 	surface.F0 = 1.0;
 
 	if (depth == 1.0)
