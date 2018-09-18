@@ -13,9 +13,8 @@ ClusteredLightBuilder::ClusteredLightBuilder(u32 maxLights)
 		GfxBufferDesc bufferDesc;
 		bufferDesc.count  = 0;
 		bufferDesc.stride = 4;
-		bufferDesc.mode   = GfxBufferMode::Temporary;
+		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_R16_Uint;
-		bufferDesc.type   = GfxBufferType::Storage;
 		m_lightIndexBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
 	}
 
@@ -23,9 +22,8 @@ ClusteredLightBuilder::ClusteredLightBuilder(u32 maxLights)
 		GfxBufferDesc bufferDesc;
 		bufferDesc.count  = 0;
 		bufferDesc.stride = (u32)sizeof(LightGridCell);
-		bufferDesc.mode   = GfxBufferMode::Temporary;
+		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		bufferDesc.type   = GfxBufferType::Storage;
 		m_lightGridBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
 	}
 }

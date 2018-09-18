@@ -88,9 +88,8 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		GfxBufferDesc bufferDesc;
 		bufferDesc.count  = 0;
 		bufferDesc.stride = 4;
-		bufferDesc.mode   = GfxBufferMode::Temporary;
+		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_R16_Uint;
-		bufferDesc.type   = GfxBufferType::Storage;
 		m_lightIndexBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
 	}
 
@@ -98,9 +97,8 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		GfxBufferDesc bufferDesc;
 		bufferDesc.count  = m_maxLights;
 		bufferDesc.stride = (u32)sizeof(PackedLightTreeNode);
-		bufferDesc.mode   = GfxBufferMode::Temporary;
+		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		bufferDesc.type   = GfxBufferType::Storage;
 		m_lightTreeBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
 	}
 
@@ -108,9 +106,8 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		GfxBufferDesc bufferDesc;
 		bufferDesc.count  = 0;
 		bufferDesc.stride = (u32)sizeof(LightGridCell);
-		bufferDesc.mode   = GfxBufferMode::Temporary;
+		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		bufferDesc.type   = GfxBufferType::Storage;
 		m_lightTileInfoBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
 	}
 
@@ -118,9 +115,8 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		GfxBufferDesc bufferDesc;
 		bufferDesc.count  = 0;
 		bufferDesc.stride = (u32)sizeof(LightDepthInterval);
-		bufferDesc.mode   = GfxBufferMode::Temporary;
+		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		bufferDesc.type   = GfxBufferType::Storage;
 		m_lightDepthIntervalBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
 	}
 
@@ -128,9 +124,8 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		GfxBufferDesc bufferDesc;
 		bufferDesc.count  = 0;
 		bufferDesc.stride = (u32)sizeof(u32);
-		bufferDesc.mode   = GfxBufferMode::Temporary;
+		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		bufferDesc.type   = GfxBufferType::Storage;
 		m_lightDepthIntervalIndexBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
 	}
 }

@@ -131,9 +131,9 @@ LightCullApp::LightCullApp() : BaseApplication()
 
 	createShaders();
 
-	m_sceneConstantBuffer.takeover(Gfx_CreateConstantBuffer(GfxBufferMode::Temporary, sizeof(SceneConstants)));
-	m_instanceConstantBuffer.takeover(Gfx_CreateConstantBuffer(GfxBufferMode::Temporary, sizeof(InstanceConstants)));
-	m_lightingConstantBuffer.takeover(Gfx_CreateConstantBuffer(GfxBufferMode::Temporary, sizeof(LightingConstants)));
+	m_sceneConstantBuffer.takeover(Gfx_CreateConstantBuffer(GfxBufferFlags::Transient, sizeof(SceneConstants)));
+	m_instanceConstantBuffer.takeover(Gfx_CreateConstantBuffer(GfxBufferFlags::Transient, sizeof(InstanceConstants)));
+	m_lightingConstantBuffer.takeover(Gfx_CreateConstantBuffer(GfxBufferFlags::Transient, sizeof(LightingConstants)));
 
 	if (g_appConfig.argc > 1 && endsWith(g_appConfig.argv[1], ".json"))
 	{
@@ -258,9 +258,8 @@ void LightCullApp::updateLights()
 		GfxBufferDesc bufferDesc;
 		bufferDesc.count  = MaxLights;
 		bufferDesc.stride = (u32)sizeof(LightSource);
-		bufferDesc.mode   = GfxBufferMode::Temporary;
+		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		bufferDesc.type   = GfxBufferType::Storage;
 		m_lightSourceBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
 	}
 	Gfx_UpdateBuffer(m_ctx, m_lightSourceBuffer, lightData, u32(lightDataSize));
@@ -758,7 +757,7 @@ void LightCullApp::applyLighting()
 	Gfx_SetTexture(m_ctx, GfxStage::Compute, 2, m_gbufferRoughness);
 	Gfx_SetTexture(m_ctx, GfxStage::Compute, 3, m_gbufferDepth);
 	Gfx_SetTexture(m_ctx, GfxStage::Compute, 4, m_falseColorTexture.get());
-	Gfx_SetStorageImage(m_ctx, GfxStage::Compute, 0, m_finalFrame);
+	Gfx_SetStorageImage(m_ctx, 0, m_finalFrame);
 
 	const u32 debugVisualizationEnabled = m_viewMode == ViewMode::Final ? 0 : 1;
 
@@ -767,12 +766,12 @@ void LightCullApp::applyLighting()
 		Gfx_SetTechnique(m_ctx, m_techniqueHybridTiledLightTreeShading[debugVisualizationEnabled]);
 
 		u32 bufferIndex = 0;
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, bufferIndex++, m_lightSourceBuffer);
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, bufferIndex++, m_tiledLightTreeBuildResult.lightTreeBuffer);
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, bufferIndex++, m_tiledLightTreeBuildResult.lightTileInfoBuffer);
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, bufferIndex++, m_tiledLightTreeBuildResult.lightIndexBuffer);
+		Gfx_SetStorageBuffer(m_ctx, bufferIndex++, m_lightSourceBuffer);
+		Gfx_SetStorageBuffer(m_ctx, bufferIndex++, m_tiledLightTreeBuildResult.lightTreeBuffer);
+		Gfx_SetStorageBuffer(m_ctx, bufferIndex++, m_tiledLightTreeBuildResult.lightTileInfoBuffer);
+		Gfx_SetStorageBuffer(m_ctx, bufferIndex++, m_tiledLightTreeBuildResult.lightIndexBuffer);
 
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, bufferIndex++, m_tileStatsBuffer);
+		Gfx_SetStorageBuffer(m_ctx, bufferIndex++, m_tileStatsBuffer);
 
 		// TODO: query thread group size from shader or configure it through specialization constants
 		u32 dispatchWidth  = divUp(outputDesc.width, m_threadGroupSizeHybridTiledLightTreeShading.x);
@@ -800,10 +799,10 @@ void LightCullApp::applyLighting()
 			Gfx_SetTechnique(m_ctx, m_techniqueTiledLightTreeShading[debugVisualizationEnabled]);
 		}
 
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 0, m_lightSourceBuffer);
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 1, m_tiledLightTreeBuildResult.lightTreeBuffer);
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 2, m_tiledLightTreeBuildResult.lightTileInfoBuffer);
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 3, m_tiledLightTreeBuildResult.lightIndexBuffer);
+		Gfx_SetStorageBuffer(m_ctx, 0, m_lightSourceBuffer);
+		Gfx_SetStorageBuffer(m_ctx, 1, m_tiledLightTreeBuildResult.lightTreeBuffer);
+		Gfx_SetStorageBuffer(m_ctx, 2, m_tiledLightTreeBuildResult.lightTileInfoBuffer);
+		Gfx_SetStorageBuffer(m_ctx, 3, m_tiledLightTreeBuildResult.lightIndexBuffer);
 
 		Gfx_Dispatch(m_ctx, dispatchWidth, dispatchHeight, 1);
 	}
@@ -811,9 +810,9 @@ void LightCullApp::applyLighting()
 	{
 		Gfx_SetTechnique(m_ctx, m_techniqueClusteredShading[debugVisualizationEnabled]);
 
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 0, m_lightSourceBuffer);
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 1, m_clusteredLightBuildResult.lightGridBuffer);
-		Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 2, m_clusteredLightBuildResult.lightIndexBuffer);
+		Gfx_SetStorageBuffer(m_ctx, 0, m_lightSourceBuffer);
+		Gfx_SetStorageBuffer(m_ctx, 1, m_clusteredLightBuildResult.lightGridBuffer);
+		Gfx_SetStorageBuffer(m_ctx, 2, m_clusteredLightBuildResult.lightIndexBuffer);
 
 		// TODO: query thread group size from shader or configure it through specialization constants
 		u32 dispatchWidth  = divUp(outputDesc.width, m_threadGroupSizeClusteredShading.x);
@@ -841,12 +840,12 @@ void LightCullApp::generateTileStats()
 	Gfx_SetTexture(m_ctx, GfxStage::Compute, 1, m_gbufferNormal);
 	Gfx_SetTexture(m_ctx, GfxStage::Compute, 2, m_gbufferRoughness);
 	Gfx_SetTexture(m_ctx, GfxStage::Compute, 3, m_gbufferDepth);
-	Gfx_SetStorageImage(m_ctx, GfxStage::Compute, 0, m_finalFrame);
+	Gfx_SetStorageImage(m_ctx, 0, m_finalFrame);
 
-	Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 0, m_lightSourceBuffer);
-	Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 1, m_tiledLightTreeBuildResult.lightTreeBuffer);
-	Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 2, m_tiledLightTreeBuildResult.lightTileInfoBuffer);
-	Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 3, m_tileStatsBuffer);
+	Gfx_SetStorageBuffer(m_ctx, 0, m_lightSourceBuffer);
+	Gfx_SetStorageBuffer(m_ctx, 1, m_tiledLightTreeBuildResult.lightTreeBuffer);
+	Gfx_SetStorageBuffer(m_ctx, 2, m_tiledLightTreeBuildResult.lightTileInfoBuffer);
+	Gfx_SetStorageBuffer(m_ctx, 3, m_tileStatsBuffer);
 
 	// TODO: query thread group size from shader or configure it through specialization constants
 	u32 dispatchWidth  = divUp(outputDesc.width, 8);
@@ -857,8 +856,8 @@ void LightCullApp::generateTileStats()
 	// reduce the stats to a single integer counter
 
 	Gfx_SetTechnique(m_ctx, m_techniqueTileStatsReduce);
-	Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 0, m_tileStatsBuffer);
-	Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 1, m_tileStatsReducedBuffer);
+	Gfx_SetStorageBuffer(m_ctx, 0, m_tileStatsBuffer);
+	Gfx_SetStorageBuffer(m_ctx, 1, m_tileStatsReducedBuffer);
 
 	const u32 inputCount = dispatchWidth * dispatchHeight;
 	Gfx_Dispatch(m_ctx, 1, 1, 1, &inputCount, sizeof(inputCount));
@@ -870,8 +869,8 @@ void LightCullApp::drawTileStats()
 
 	Gfx_SetTechnique(m_ctx, m_techniqueTileStatsDisplay);
 
-	Gfx_SetStorageImage(m_ctx, GfxStage::Compute, 0, m_finalFrame);
-	Gfx_SetStorageBuffer(m_ctx, GfxStage::Compute, 0, m_tileStatsBuffer);
+	Gfx_SetStorageImage(m_ctx, 0, m_finalFrame);
+	Gfx_SetStorageBuffer(m_ctx, 0, m_tileStatsBuffer);
 
 	u32 dispatchWidth  = divUp(outputDesc.width, 8);
 	u32 dispatchHeight = divUp(outputDesc.height, 8);
@@ -1413,11 +1412,11 @@ void LightCullApp::generateDebugMeshes()
 	m_debugSphereMesh.m_indexCount  = u32(indices.size());
 
 	GfxBufferDesc vbDesc(
-	    GfxBufferType::Vertex, GfxBufferMode::Static, m_debugSphereMesh.m_vertexCount, sizeof(ModelVertex));
+	    GfxBufferFlags::Vertex, m_debugSphereMesh.m_vertexCount, sizeof(ModelVertex));
 	m_debugSphereMesh.m_vertexBuffer.takeover(Gfx_CreateBuffer(vbDesc, vertices.data()));
 
 	GfxBufferDesc ibDesc(
-	    GfxBufferType::Index, GfxBufferMode::Static, GfxFormat_R32_Uint, m_debugSphereMesh.m_indexCount, 4);
+	    GfxBufferFlags::Index, GfxFormat_R32_Uint, m_debugSphereMesh.m_indexCount, 4);
 	m_debugSphereMesh.m_indexBuffer.takeover(Gfx_CreateBuffer(ibDesc, indices.data()));
 }
 
@@ -1530,10 +1529,10 @@ void LightCullApp::generateMeshes()
 	m_vertexCount = (u32)vertices.size();
 	m_indexCount  = (u32)indices.size();
 
-	GfxBufferDesc vbDesc(GfxBufferType::Vertex, GfxBufferMode::Static, m_vertexCount, sizeof(ModelVertex));
+	GfxBufferDesc vbDesc(GfxBufferFlags::Vertex, m_vertexCount, sizeof(ModelVertex));
 	m_vertexBuffer.takeover(Gfx_CreateBuffer(vbDesc, vertices.data()));
 
-	GfxBufferDesc ibDesc(GfxBufferType::Index, GfxBufferMode::Static, GfxFormat_R32_Uint, m_indexCount, 4);
+	GfxBufferDesc ibDesc(GfxBufferFlags::Index, GfxFormat_R32_Uint, m_indexCount, 4);
 	m_indexBuffer.takeover(Gfx_CreateBuffer(ibDesc, indices.data()));
 
 	m_lightAnimationBounds.m_min = Vec3(-64, 5.0f, -64);
@@ -1601,7 +1600,7 @@ void LightCullApp::createShaders()
 		u32               bindingIndex = 0;
 		bindings.addConstantBuffer("SceneConstants", bindingIndex++);
 		bindings.addConstantBuffer("InstanceConstants", bindingIndex++);
-		bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+		bindings.addSampler("defaultSampler", bindingIndex++);
 		bindings.addTexture("s_albedo", bindingIndex++);
 		bindings.addTexture("s_normal", bindingIndex++);
 		bindings.addTexture("s_roughness", bindingIndex++);
@@ -1625,7 +1624,7 @@ void LightCullApp::createShaders()
 
 		GfxShaderBindings bindings;
 		u32               bindingIndex = 0;
-		bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+		bindings.addSampler("defaultSampler", bindingIndex++);
 		bindings.addTexture("s_depth", bindingIndex++);
 		bindings.addTexture("s_albedo", bindingIndex++);
 		bindings.addTexture("s_normal", bindingIndex++);
@@ -1659,7 +1658,7 @@ void LightCullApp::createShaders()
 			GfxShaderBindings bindings;
 			u32               bindingIndex = 0;
 			bindings.addConstantBuffer("LightingConstants", bindingIndex++);
-			bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+			bindings.addSampler("defaultSampler", bindingIndex++);
 			bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
 			bindings.addTexture("gbufferNormalImage", bindingIndex++);
 			bindings.addTexture("gbufferRoughnessImage", bindingIndex++);
@@ -1691,7 +1690,7 @@ void LightCullApp::createShaders()
 			GfxShaderBindings bindings;
 			u32               bindingIndex = 0;
 			bindings.addConstantBuffer("LightingConstants", bindingIndex++);
-			bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+			bindings.addSampler("defaultSampler", bindingIndex++);
 			bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
 			bindings.addTexture("gbufferNormalImage", bindingIndex++);
 			bindings.addTexture("gbufferRoughnessImage", bindingIndex++);
@@ -1751,7 +1750,7 @@ void LightCullApp::createShaders()
 			GfxShaderBindings bindings;
 			u32               bindingIndex = 0;
 			bindings.addConstantBuffer("LightingConstants", bindingIndex++);
-			bindings.addSeparateSampler("defaultSampler", bindingIndex++);
+			bindings.addSampler("defaultSampler", bindingIndex++);
 			bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
 			bindings.addTexture("gbufferNormalImage", bindingIndex++);
 			bindings.addTexture("gbufferRoughnessImage", bindingIndex++);
@@ -1860,8 +1859,7 @@ void LightCullApp::createGbuffer(Tuple2i size)
 		u32 dispatchHeight = divUp(size.y, 8);
 
 		GfxBufferDesc bufferDesc;
-		bufferDesc.type   = GfxBufferType::Storage;
-		bufferDesc.mode   = GfxBufferMode::Static;
+		bufferDesc.flags  = GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_R32_Uint;
 		bufferDesc.stride = 4;
 		bufferDesc.count  = dispatchWidth * dispatchHeight;
@@ -1871,8 +1869,7 @@ void LightCullApp::createGbuffer(Tuple2i size)
 
 	{
 		GfxBufferDesc bufferDesc;
-		bufferDesc.type        = GfxBufferType::Storage;
-		bufferDesc.mode        = GfxBufferMode::Static;
+		bufferDesc.flags       = GfxBufferFlags::Storage;
 		bufferDesc.format      = GfxFormat_R32_Uint;
 		bufferDesc.stride      = 4;
 		bufferDesc.count       = 1;
@@ -2502,10 +2499,10 @@ bool LightCullApp::loadModel(const char* filename)
 	m_vertexCount = (u32)model.vertices.size();
 	m_indexCount  = (u32)model.indices.size();
 
-	GfxBufferDesc vbDesc(GfxBufferType::Vertex, GfxBufferMode::Static, m_vertexCount, sizeof(ModelVertex));
+	GfxBufferDesc vbDesc(GfxBufferFlags::Vertex, m_vertexCount, sizeof(ModelVertex));
 	m_vertexBuffer.takeover(Gfx_CreateBuffer(vbDesc, model.vertices.data()));
 
-	GfxBufferDesc ibDesc(GfxBufferType::Index, GfxBufferMode::Static, GfxFormat_R32_Uint, m_indexCount, 4);
+	GfxBufferDesc ibDesc(GfxBufferFlags::Index, GfxFormat_R32_Uint, m_indexCount, 4);
 	m_indexBuffer.takeover(Gfx_CreateBuffer(ibDesc, model.indices.data()));
 
 	m_lightAnimationBounds = m_worldBoundingBox;

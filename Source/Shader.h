@@ -7,19 +7,13 @@
 struct ShaderResourceBinding
 {
 	ShaderResourceBinding(GfxBindingType _type = GfxBindingType_Unknown, u32 _offset = ~0u, u32 _size = 0)
-	: type(GfxShaderBindings::BindingType(_type)), offset(_offset), size(_size)
-	{
-	}
-
-	ShaderResourceBinding(
-	    GfxShaderBindings::BindingType _type = GfxShaderBindings::BindingType_Unknown, u32 _offset = ~0u, u32 _size = 0)
 	: type(_type), offset(_offset), size(_size)
 	{
 	}
 
-	GfxShaderBindings::BindingType type   = GfxShaderBindings::BindingType_Unknown;
-	u32                            offset = ~0u;
-	u32                            size   = 0;
+	GfxBindingType type   = GfxBindingType_Unknown;
+	u32            offset = ~0u;
+	u32            size   = 0;
 };
 
 struct ShaderBingingsBuilder : GfxShaderBindings
@@ -32,9 +26,9 @@ struct ShaderBingingsBuilder : GfxShaderBindings
 		for (const auto& binding : bindings)
 		{
 			u32 counterIndex = binding.type;
-			if (binding.type == BindingType_RWTypedBuffer)
+			if (binding.type == GfxBindingType_RWTypedBuffer)
 			{
-				counterIndex = BindingType_RWBuffer;
+				counterIndex = GfxBindingType_RWBuffer;
 			}
 
 			GfxShaderBindings::Item item;
@@ -48,21 +42,20 @@ struct ShaderBingingsBuilder : GfxShaderBindings
 			u32 resourceSize = 0;
 			switch (binding.type)
 			{
-			case BindingType_PushConstants: resourceSize = binding.size; break;
-			case BindingType_ConstantBuffer:
-			case BindingType_CombinedSampler:
-			case BindingType_Sampler:
-			case BindingType_Texture:
-			case BindingType_RWImage:
-			case BindingType_RWBuffer:
-			case BindingType_RWTypedBuffer: resourceSize = (u32)sizeof(UntypedResourceHandle); break;
+			case GfxBindingType_PushConstants: resourceSize = binding.size; break;
+			case GfxBindingType_ConstantBuffer:
+			case GfxBindingType_Sampler:
+			case GfxBindingType_Texture:
+			case GfxBindingType_RWImage:
+			case GfxBindingType_RWBuffer:
+			case GfxBindingType_RWTypedBuffer: resourceSize = (u32)sizeof(UntypedResourceHandle); break;
 			default: Log::error("Unsupported binding type");
 			}
 
 			resourceSizes.pushBack(resourceSize);
 			bindingIndices[counterIndex]++;
 
-			if (binding.type == GfxShaderBindings::BindingType_PushConstants)
+			if (binding.type == GfxBindingType_PushConstants)
 			{
 				pushConstantBindingIndex      = bindingIndex;
 				item.pushConstants.size       = binding.size;
@@ -84,17 +77,17 @@ struct ShaderBingingsBuilder : GfxShaderBindings
 			GfxBuffer   buffer  = {};
 			switch (binding.type)
 			{
-			case BindingType_PushConstants:
+			case GfxBindingType_PushConstants:
 				// nothing
 				break;
-			case BindingType_ConstantBuffer:
+			case GfxBindingType_ConstantBuffer:
 				memcpy(&buffer, (u8*)resources + resourceOffsets[i], resourceSizes[i]);
 				Gfx_SetConstantBuffer(ctx, binding.idx, buffer);
 				break;
-			case BindingType_RWBuffer:
-			case BindingType_RWTypedBuffer:
+			case GfxBindingType_RWBuffer:
+			case GfxBindingType_RWTypedBuffer:
 				memcpy(&buffer, (u8*)resources + resourceOffsets[i], resourceSizes[i]);
-				Gfx_SetStorageBuffer(ctx, GfxStage::Compute, binding.idx, buffer);
+				Gfx_SetStorageBuffer(ctx, binding.idx, buffer);
 				break;
 			default: Log::error("Unsupported binding type");
 			}

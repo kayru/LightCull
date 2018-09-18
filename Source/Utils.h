@@ -166,3 +166,9 @@ template <typename T> u32 Gfx_UpdateBufferT(GfxContext* rc, GfxBuffer h, const A
 
 GfxTextureRef loadDDS(const char* filename);
 GfxTextureRef loadBitmap(const char* filename, bool flipY = false);
+
+inline GfxBuffer Gfx_CreateConstantBuffer(GfxBufferFlags flags, u32 size, const void* data = nullptr)
+{
+	GfxBufferDesc desc(GfxBufferFlags::Constant | flags, GfxFormat_Unknown, 1, size);
+	return Gfx_CreateBuffer(desc, data);
+}
