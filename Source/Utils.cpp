@@ -47,7 +47,7 @@ GfxTextureRef loadBitmap(const char* filename, bool flipY)
 
 		std::vector<GfxTextureData> textureData;
 		textureData.reserve(16);
-		textureData.push_back(GfxTextureData(pixels));
+		textureData.push_back(makeTextureData(pixels, 0));
 
 		u32 mipWidth  = w;
 		u32 mipHeight = h;
@@ -66,7 +66,7 @@ GfxTextureRef loadBitmap(const char* filename, bool flipY)
 			    nextMip, nextMipWidth, nextMipHeight, nextMipPitch, 4);
 			RUSH_ASSERT(resizeResult);
 
-			textureData.push_back(GfxTextureData(nextMip, (u32)textureData.size()));
+			textureData.push_back(makeTextureData(nextMip, (u32)textureData.size()));
 
 			mipWidth  = nextMipWidth;
 			mipHeight = nextMipHeight;

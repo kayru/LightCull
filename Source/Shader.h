@@ -4,6 +4,19 @@
 #include <Rush/GfxDevice.h>
 #include <Rush/GfxRef.h>
 
+enum GfxBindingType
+{
+	GfxBindingType_Unknown,
+
+	GfxBindingType_PushConstants,
+	GfxBindingType_ConstantBuffer,
+	GfxBindingType_Sampler,
+	GfxBindingType_Texture,
+	GfxBindingType_RWImage,
+	GfxBindingType_RWBuffer,
+	GfxBindingType_RWTypedBuffer,
+};
+
 struct ShaderResourceBinding
 {
 	ShaderResourceBinding(GfxBindingType _type = GfxBindingType_Unknown, u32 _offset = ~0u, u32 _size = 0)
@@ -16,88 +29,51 @@ struct ShaderResourceBinding
 	u32            size   = 0;
 };
 
-struct ShaderBingingsBuilder : GfxShaderBindings
+struct ShaderBingingsBuilder
 {
-	ShaderBingingsBuilder(std::initializer_list<ShaderResourceBinding> bindings)
+	struct Item
 	{
-		u32 bindingIndices[255] = {};
-
-		u32 bindingIndex = 0;
-		for (const auto& binding : bindings)
-		{
-			u32 counterIndex = binding.type;
-			if (binding.type == GfxBindingType_RWTypedBuffer)
+		const char* name;
+		const void* data;
+		union {
+			struct
 			{
-				counterIndex = GfxBindingType_RWBuffer;
-			}
-
-			GfxShaderBindings::Item item;
-			item.name  = nullptr;
-			item.data  = nullptr;
-			item.count = 1;
-			item.idx   = bindingIndices[counterIndex];
-			item.type  = binding.type;
-			resourceOffsets.pushBack(binding.offset);
-
-			u32 resourceSize = 0;
-			switch (binding.type)
+				u32           size;
+				GfxStageFlags stageFlags;
+			} pushConstants;
+			struct
 			{
-			case GfxBindingType_PushConstants: resourceSize = binding.size; break;
-			case GfxBindingType_ConstantBuffer:
-			case GfxBindingType_Sampler:
-			case GfxBindingType_Texture:
-			case GfxBindingType_RWImage:
-			case GfxBindingType_RWBuffer:
-			case GfxBindingType_RWTypedBuffer: resourceSize = (u32)sizeof(UntypedResourceHandle); break;
-			default: Log::error("Unsupported binding type");
-			}
+				u32 count;
+				u32 idx;
+			};
+		};
 
-			resourceSizes.pushBack(resourceSize);
-			bindingIndices[counterIndex]++;
+		GfxBindingType type;
+	};
 
-			if (binding.type == GfxBindingType_PushConstants)
-			{
-				pushConstantBindingIndex      = bindingIndex;
-				item.pushConstants.size       = binding.size;
-				item.pushConstants.stageFlags = GfxStageFlags::Compute;
-			}
+	ShaderBingingsBuilder() = default;
+	ShaderBingingsBuilder(std::initializer_list<ShaderResourceBinding> bindings);
 
-			items.pushBack(item);
+	bool addConstantBuffer(const char* name, u32 idx);
+	bool addSampler(const char* name, u32 idx);
+	bool addTexture(const char* name, u32 idx);
+	bool addStorageImage(const char* name, u32 idx);
+	bool addStorageBuffer(const char* name, u32 idx) { return addRWBuffer(name, idx); }
+	bool addPushConstants(const char* name, GfxStageFlags stageFlags, u32 size);
 
-			bindingIndex++;
-		}
-	}
+	bool addRWBuffer(const char* name, u32 idx);
+	bool addTypedRWBuffer(const char* name, u32 idx);
 
-	void setResources(GfxContext* ctx, const void* resources)
-	{
-		u32 itemCount = (u32)items.size();
-		for (u32 i = 0; i < itemCount; ++i)
-		{
-			const auto& binding = items[i];
-			GfxBuffer   buffer  = {};
-			switch (binding.type)
-			{
-			case GfxBindingType_PushConstants:
-				// nothing
-				break;
-			case GfxBindingType_ConstantBuffer:
-				memcpy(&buffer, (u8*)resources + resourceOffsets[i], resourceSizes[i]);
-				Gfx_SetConstantBuffer(ctx, binding.idx, buffer);
-				break;
-			case GfxBindingType_RWBuffer:
-			case GfxBindingType_RWTypedBuffer:
-				memcpy(&buffer, (u8*)resources + resourceOffsets[i], resourceSizes[i]);
-				Gfx_SetStorageBuffer(ctx, binding.idx, buffer);
-				break;
-			default: Log::error("Unsupported binding type");
-			}
-		}
-	}
+	void setResources(GfxContext* ctx, const void* resources);
 
 	StaticArray<u32, 128> resourceOffsets;
 	StaticArray<u32, 128> resourceSizes;
 
 	u32 pushConstantBindingIndex = ~0u;
+
+	StaticArray<Item, 128> items;
+
+	GfxShaderBindingDesc desc;
 };
 
 class ComputeShader
@@ -107,7 +83,7 @@ public:
 	: m_bindings(bindings)
 	{
 		auto cs = Gfx_CreateComputeShader(source);
-		m_technique.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, &m_bindings)));
+		m_technique.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, m_bindings.desc)));
 		Gfx_Release(cs);
 	}
 

@@ -172,3 +172,11 @@ inline GfxBuffer Gfx_CreateConstantBuffer(GfxBufferFlags flags, u32 size, const 
 	GfxBufferDesc desc(GfxBufferFlags::Constant | flags, GfxFormat_Unknown, 1, size);
 	return Gfx_CreateBuffer(desc, data);
 }
+
+inline GfxTextureData makeTextureData(const void* pixels, u32 mipLevel)
+{
+	GfxTextureData result;
+	result.pixels = pixels;
+	result.mip    = mipLevel;
+	return result;
+}

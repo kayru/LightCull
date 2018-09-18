@@ -1168,7 +1168,7 @@ GfxTextureRef LightCullApp::loadTextureFromMemory(const void* data, Tuple2i size
 			Log::error("Unsupported format");
 		}
 
-		GfxTextureData textureData(rgbaData.data());
+		GfxTextureData textureData = makeTextureData(rgbaData.data(), 0);
 
 		GfxTextureDesc desc = GfxTextureDesc::make2D(size.x, size.y, GfxFormat_RGBA8_Unorm);
 		desc.mips           = 1;
@@ -1177,7 +1177,7 @@ GfxTextureRef LightCullApp::loadTextureFromMemory(const void* data, Tuple2i size
 	}
 	else
 	{
-		GfxTextureData textureData(data);
+		GfxTextureData textureData = makeTextureData(data, 0);
 
 		GfxTextureDesc desc = GfxTextureDesc::make2D(size.x, size.y, format);
 		desc.mips           = 1;
@@ -1596,8 +1596,8 @@ void LightCullApp::createShaders()
 
 		auto vf = Gfx_CreateVertexFormat(vfDesc);
 
-		GfxShaderBindings bindings;
-		u32               bindingIndex = 0;
+		ShaderBingingsBuilder bindings;
+		u32                   bindingIndex = 0;
 		bindings.addConstantBuffer("SceneConstants", bindingIndex++);
 		bindings.addConstantBuffer("InstanceConstants", bindingIndex++);
 		bindings.addSampler("defaultSampler", bindingIndex++);
@@ -1605,8 +1605,8 @@ void LightCullApp::createShaders()
 		bindings.addTexture("s_normal", bindingIndex++);
 		bindings.addTexture("s_roughness", bindingIndex++);
 
-		GfxTechniqueDesc desc(ps, vs, vf, &bindings);
-		desc.waveLimits[u32(GfxStage::Pixel)] = 0.25f;
+		GfxTechniqueDesc desc(ps, vs, vf, bindings.desc);
+		desc.psWaveLimit = 0.25f;
 
 		m_techniqueGbuffer.takeover(Gfx_CreateTechnique(desc));
 
@@ -1622,14 +1622,14 @@ void LightCullApp::createShaders()
 		GfxVertexFormatDesc vfDesc;
 		auto                vf = Gfx_CreateVertexFormat(vfDesc);
 
-		GfxShaderBindings bindings;
+		ShaderBingingsBuilder bindings;
 		u32               bindingIndex = 0;
 		bindings.addSampler("defaultSampler", bindingIndex++);
 		bindings.addTexture("s_depth", bindingIndex++);
 		bindings.addTexture("s_albedo", bindingIndex++);
 		bindings.addTexture("s_normal", bindingIndex++);
 		bindings.addTexture("s_roughness", bindingIndex++);
-		m_techniqueGbufferTranscode.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(ps, vs, vf, &bindings)));
+		m_techniqueGbufferTranscode.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(ps, vs, vf, bindings.desc)));
 
 		Gfx_Release(ps);
 		Gfx_Release(vs);
@@ -1655,8 +1655,8 @@ void LightCullApp::createShaders()
 			auto cs = Gfx_CreateComputeShader(
 			    shaderFromFile("Shaders/TiledLightTreeShadingHybrid.comp.spv", GfxShaderType::Compute));
 
-			GfxShaderBindings bindings;
-			u32               bindingIndex = 0;
+			ShaderBingingsBuilder bindings;
+			u32                   bindingIndex = 0;
 			bindings.addConstantBuffer("LightingConstants", bindingIndex++);
 			bindings.addSampler("defaultSampler", bindingIndex++);
 			bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
@@ -1675,7 +1675,7 @@ void LightCullApp::createShaders()
 			specializationData.threadGroupSizeX          = m_threadGroupSizeHybridTiledLightTreeShading.x;
 			specializationData.threadGroupSizeY          = m_threadGroupSizeHybridTiledLightTreeShading.y;
 
-			GfxTechniqueDesc desc(cs, &bindings);
+			GfxTechniqueDesc desc(cs, bindings.desc);
 			desc.specializationConstants     = specializationConstants;
 			desc.specializationConstantCount = RUSH_COUNTOF(specializationConstants);
 			desc.specializationData          = &specializationData;
@@ -1687,8 +1687,8 @@ void LightCullApp::createShaders()
 		}
 
 		{
-			GfxShaderBindings bindings;
-			u32               bindingIndex = 0;
+			ShaderBingingsBuilder bindings;
+			u32                   bindingIndex = 0;
 			bindings.addConstantBuffer("LightingConstants", bindingIndex++);
 			bindings.addSampler("defaultSampler", bindingIndex++);
 			bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
@@ -1711,7 +1711,7 @@ void LightCullApp::createShaders()
 				specializationData.threadGroupSizeX          = m_threadGroupSizeTiledLightTreeShading.x;
 				specializationData.threadGroupSizeY          = m_threadGroupSizeTiledLightTreeShading.y;
 
-				GfxTechniqueDesc desc(cs, &bindings);
+				GfxTechniqueDesc desc(cs, bindings.desc);
 				desc.specializationConstants     = specializationConstants;
 				desc.specializationConstantCount = RUSH_COUNTOF(specializationConstants);
 				desc.specializationData          = &specializationData;
@@ -1732,7 +1732,7 @@ void LightCullApp::createShaders()
 				specializationData.threadGroupSizeX          = m_threadGroupSizeTiledLightTreeShadingMasked.x;
 				specializationData.threadGroupSizeY          = m_threadGroupSizeTiledLightTreeShadingMasked.y;
 
-				GfxTechniqueDesc desc(cs, &bindings);
+				GfxTechniqueDesc desc(cs, bindings.desc);
 				desc.specializationConstants     = specializationConstants;
 				desc.specializationConstantCount = RUSH_COUNTOF(specializationConstants);
 				desc.specializationData          = &specializationData;
@@ -1747,8 +1747,8 @@ void LightCullApp::createShaders()
 			auto cs =
 			    Gfx_CreateComputeShader(shaderFromFile("Shaders/ClusteredShading.comp.spv", GfxShaderType::Compute));
 
-			GfxShaderBindings bindings;
-			u32               bindingIndex = 0;
+			ShaderBingingsBuilder bindings;
+			u32                   bindingIndex = 0;
 			bindings.addConstantBuffer("LightingConstants", bindingIndex++);
 			bindings.addSampler("defaultSampler", bindingIndex++);
 			bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
@@ -1766,7 +1766,7 @@ void LightCullApp::createShaders()
 			specializationData.threadGroupSizeX          = m_threadGroupSizeClusteredShading.x;
 			specializationData.threadGroupSizeY          = m_threadGroupSizeClusteredShading.y;
 
-			GfxTechniqueDesc desc(cs, &bindings);
+			GfxTechniqueDesc desc(cs, bindings.desc);
 			desc.specializationConstants     = specializationConstants;
 			desc.specializationConstantCount = RUSH_COUNTOF(specializationConstants);
 			desc.specializationData          = &specializationData;
@@ -1780,12 +1780,12 @@ void LightCullApp::createShaders()
 	{
 		auto cs = Gfx_CreateComputeShader(shaderFromFile("Shaders/TileStatsDisplay.comp.spv", GfxShaderType::Compute));
 
-		GfxShaderBindings bindings;
-		u32               bindingIndex = 0;
+		ShaderBingingsBuilder bindings;
+		u32                   bindingIndex = 0;
 		bindings.addPushConstants("PushConstants", GfxStageFlags::Compute, 2 * sizeof(u32));
 		bindings.addStorageImage("outputImage", bindingIndex++);
 		bindings.addStorageBuffer("TileStatsBuffer", bindingIndex++);
-		m_techniqueTileStatsDisplay.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, &bindings)));
+		m_techniqueTileStatsDisplay.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, bindings.desc)));
 
 		Gfx_Release(cs);
 	}
@@ -1793,12 +1793,12 @@ void LightCullApp::createShaders()
 	{
 		auto cs = Gfx_CreateComputeShader(shaderFromFile("Shaders/TileStatsReduce.comp.spv", GfxShaderType::Compute));
 
-		GfxShaderBindings bindings;
-		u32               bindingIndex = 0;
+		ShaderBingingsBuilder bindings;
+		u32                   bindingIndex = 0;
 		bindings.addPushConstants("PushConstants", GfxStageFlags::Compute, sizeof(u32));
 		bindings.addStorageBuffer("Input", bindingIndex++);
 		bindings.addStorageBuffer("Output", bindingIndex++);
-		m_techniqueTileStatsReduce.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, &bindings)));
+		m_techniqueTileStatsReduce.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, bindings.desc)));
 
 		Gfx_Release(cs);
 	}
@@ -1806,8 +1806,8 @@ void LightCullApp::createShaders()
 	{
 		auto cs = Gfx_CreateComputeShader(shaderFromFile("Shaders/TileStatsGenerate.comp.spv", GfxShaderType::Compute));
 
-		GfxShaderBindings bindings;
-		u32               bindingIndex = 0;
+		ShaderBingingsBuilder bindings;
+		u32                   bindingIndex = 0;
 		bindings.addConstantBuffer("LightingConstants", bindingIndex++);
 		bindings.addTexture("gbufferBaseColorImage", bindingIndex++);
 		bindings.addTexture("gbufferNormalImage", bindingIndex++);
@@ -1819,7 +1819,7 @@ void LightCullApp::createShaders()
 		bindings.addStorageBuffer("LightTreeBuffer", bindingIndex++);
 		bindings.addStorageBuffer("LightTileInfoBuffer", bindingIndex++);
 		bindings.addStorageBuffer("TileStatsBuffer", bindingIndex++);
-		m_techniqueTileStatsGenerate.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, &bindings)));
+		m_techniqueTileStatsGenerate.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, bindings.desc)));
 
 		Gfx_Release(cs);
 	}

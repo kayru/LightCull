@@ -50,6 +50,7 @@ set(src
 	Scripting.cpp
 	Scripting.h
 	Shader.h
+	Shader.cpp
 	TiledLightTreeBuilder.cpp
 	TiledLightTreeBuilder.h
 	Utils.cpp

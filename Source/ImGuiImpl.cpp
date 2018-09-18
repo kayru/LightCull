@@ -113,7 +113,7 @@ static void ImGuiImpl_Render(ImDrawData* drawData)
 				verts[i].tex.x = v.uv.x;
 				verts[i].tex.y = v.uv.y;
 
-				verts[i].col0 = ColorRGBA8(v.col);
+				verts[i].col   = ColorRGBA8(v.col);
 			}
 
 			GfxRect scissor;
