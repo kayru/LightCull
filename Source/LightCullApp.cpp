@@ -2052,21 +2052,20 @@ void LightCullApp::updateGui(float dt)
 			    ImGui::SliderFloat("Slice max depth", &m_clusteredLightBuilderParams.maxSliceDepth, 1, 500);
 		}
 
-#if USE_GPU_BUILDER
 		if (m_lightingMode == LightingMode::Tree)
 		{
+#if USE_GPU_BUILDER
 			settingsChanges |= ImGui::Checkbox("GPU light tree builder", &m_useGpuLightTreeBuilder);
 			if (Gfx_GetCapability().asyncCompute)
 			{
 				settingsChanges |= ImGui::Checkbox("GPU async compute", &m_useAsyncCompute);
 			}
-
+#endif
 			if (m_techniqueTiledLightTreeShadingMasked[0].valid())
 			{
 				settingsChanges |= ImGui::Checkbox("Use shallow tree", &m_tiledLightTreeBuilderParams.useShallowTree);
 			}
 		}
-#endif
 
 		const char* tileFrustumCullingStrings[] = {"None", "Fast, inaccurate", "Accurate"};
 		int         tileFrustumCullingMode      = m_useTileFrustumCulling;

@@ -129,7 +129,8 @@ public:
 	AlignedArray<LightDepthInterval>          m_lightIntervals;
 	AlignedArray<LightTileScreenSpaceExtents> m_lightScreenSpaceExtents;
 	std::vector<LightTreeNode>                m_tempLightTree; // temporary tree
-	std::vector<PackedLightTreeNode>          m_gpuLightTree;
+	std::vector<PackedLightTreeNode>          m_gpuLightTree; // binary
+	std::vector<ShallowLightTreeNode>         m_gpuLightTreeShallow; // 8-ary
 	std::vector<LightSource>                  m_gpuLights;
 	std::vector<u16>                          m_gpuLightIndices;
 

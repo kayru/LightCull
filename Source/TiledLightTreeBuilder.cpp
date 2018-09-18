@@ -175,6 +175,8 @@ struct LightTreeInfo
 
 inline LightTreeInfo buildLightTreeInfo(const TreeBuildParams& params, u32 lightCount)
 {
+	// TODO: make a special version for shallow tree
+
 	LightTreeInfo result;
 
 	const u32 targetLeafNodeCount = divUp(lightCount, params.minLightsPerLeaf);
@@ -300,6 +302,109 @@ static u32 buildLightTreeBottomUp(const TreeBuildParams& params, const AlignedAr
 		dfNode.radius               = (bfNode.depthMax - bfNode.depthMin) / 2.0f;
 		dfNode.lightOffset          = bfNode.lightOffset;
 		dfNode.params               = packNodeParams(bfNode.lightCount, 0, 0) | templateNode.params;
+	}
+
+	return treeInfo.totalNodeCount;
+}
+
+
+static u32 buildLightTreeBottomUpShallow(const TreeBuildParams& params,
+    const AlignedArray<LightDepthInterval>& intervals, const AlignedArray<u16>& intervalIndices, u32 lightOffset,
+    u32 lightCount, ShallowLightTreeNode* outShallowLightTree, u32 debugIndex)
+{
+	const LightTreeInfo treeInfo = buildLightTreeInfo(
+	    params, lightCount); // TODO: use a specialized version of buildLightTreeInfo for shallow tree
+
+	const u32 topLevelNodeChildCount = 8;
+	const u32 topLevelNodeCount      = treeInfo.leafNodeCount / topLevelNodeChildCount;
+	const u32 totalNodeCount         = topLevelNodeCount + treeInfo.leafNodeCount;
+	const u32 firstTopNodeIndex      = treeInfo.leafNodeCount;
+
+	alignas(32) LightTreeNode defaultNode;
+	defaultNode.lightOffset = 0;
+	defaultNode.lightCount  = 0;
+	defaultNode.left        = ~0u;
+	defaultNode.right       = ~0u;
+	defaultNode.isLeaf      = 1;
+	defaultNode.next        = ~0u;
+	defaultNode.depthMin    = FLT_MAX / 2.0f;
+	defaultNode.depthMax    = -FLT_MAX / 2.0f;
+
+	// Bottom-up layout (up to 64 leaf level nodes, followed by up to 8 top level nodes)
+	alignas(32) LightTreeNode breadthFirstTree[64 + 8];
+
+	// Assign lights to leaf nodes
+
+	const u32 lightsPerNode     = divUp(lightCount, treeInfo.leafNodeCount);
+	const u32 usedLeafNodeCount = divUp(lightCount, lightsPerNode);
+
+	u32 assignedLights = 0;
+
+	for (u32 leafNodeIndex = 0; leafNodeIndex < usedLeafNodeCount; ++leafNodeIndex)
+	{
+		const u32 nodeLightCount = min(lightsPerNode, lightCount - assignedLights);
+
+		LightTreeNode& leafNode = breadthFirstTree[leafNodeIndex];
+
+		leafNode             = defaultNode;
+		leafNode.lightOffset = lightOffset + leafNodeIndex * lightsPerNode;
+		leafNode.lightCount  = nodeLightCount;
+
+		for (u32 i = 0; i < nodeLightCount; ++i)
+		{
+			const u32                 lightIndex = leafNode.lightOffset + i;
+			const LightDepthInterval& interval   = intervals[intervalIndices[lightIndex]];
+			leafNode.depthMin                    = min(leafNode.depthMin, interval.center - interval.radius);
+			leafNode.depthMax                    = max(leafNode.depthMax, interval.center + interval.radius);
+		}
+
+		assignedLights += nodeLightCount;
+	}
+
+	// Ensure that all leaf level nodes are initialized
+
+	for (u32 leafNodeIndex = usedLeafNodeCount; leafNodeIndex < treeInfo.leafNodeCount; ++leafNodeIndex)
+	{
+		LightTreeNode& leafNode = breadthFirstTree[leafNodeIndex];
+		leafNode                = breadthFirstTree[usedLeafNodeCount - 1];
+		leafNode.lightCount     = 0;
+		leafNode.depthMax       = leafNode.depthMin;
+	}
+
+	RUSH_ASSERT(assignedLights == lightCount);
+
+	// Go through top level nodes and compute their metadata
+
+	for (u32 topLevelNodeIndex = 0; topLevelNodeIndex < topLevelNodeCount; ++topLevelNodeIndex)
+	{
+		const u32 firstChildNodeIndex = topLevelNodeIndex * topLevelNodeChildCount;
+
+		LightTreeNode& topLevelNode = breadthFirstTree[treeInfo.leafNodeCount + topLevelNodeIndex];
+
+		topLevelNode             = defaultNode;
+		topLevelNode.lightOffset = breadthFirstTree[firstChildNodeIndex].lightOffset;
+		topLevelNode.isLeaf      = 0;
+
+		for (u32 i = 0; i < topLevelNodeChildCount; ++i)
+		{
+			const u32            childNodeIndex = firstChildNodeIndex + i;
+			const LightTreeNode& childNode      = breadthFirstTree[childNodeIndex];
+
+			topLevelNode.lightCount += childNode.lightCount;
+			topLevelNode.depthMin = min(topLevelNode.depthMin, childNode.depthMin);
+			topLevelNode.depthMax = max(topLevelNode.depthMax, childNode.depthMax);
+		}
+	}
+
+	// Pack and write out breadth-first tree (bottom-up layout)
+
+	for (u32 nodeIndex = 0; nodeIndex < totalNodeCount; ++nodeIndex)
+	{
+		const LightTreeNode&  bfNode  = breadthFirstTree[nodeIndex];
+		ShallowLightTreeNode& outNode = outShallowLightTree[nodeIndex];
+
+		outNode.center = (bfNode.depthMin + bfNode.depthMax) / 2.0f;
+		outNode.radius = (bfNode.depthMax - bfNode.depthMin) / 2.0f;
 	}
 
 	return treeInfo.totalNodeCount;
@@ -464,7 +569,17 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 
 	m_gpuLights.clear();
 	m_gpuLightTree.clear();
+	m_gpuLightTreeShallow.clear();
 	m_gpuLightIndices.clear();
+
+	if (buildParams.useShallowTree)
+	{
+		m_gpuLightTreeShallow.reserve((m_lightIntervals.size() * 4) / 3);
+	}
+	else
+	{
+		m_gpuLightTree.reserve((m_lightIntervals.size() * 4) / 3);
+	}
 
 	m_gpuLightIndices.resize(m_tileIntervalIndices.size());
 	m_gpuLightTree.reserve((m_lightIntervals.size() * 4) / 3);
@@ -556,9 +671,18 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 					node.next        = ~0u;
 
 					cell.treeNodeCount = 1;
-					cell.treeOffset    = (u32)m_gpuLightTree.size();
 
-					m_gpuLightTree.push_back(packNode(node, 0));
+					if (buildParams.useShallowTree)
+					{
+						cell.treeOffset                = (u32)m_gpuLightTree.size();
+						ShallowLightTreeNode dummyNode = {};
+						m_gpuLightTreeShallow.push_back(dummyNode);
+					}
+					else
+					{
+						cell.treeOffset = (u32)m_gpuLightTree.size();
+						m_gpuLightTree.push_back(packNode(node, 0));
+					}
 
 					for (u32 i = 0; i < cellLightCount; ++i)
 					{
@@ -576,9 +700,18 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 					LightTreeInfo buildInfo = buildLightTreeInfo(treeBuildParams, cellLightCount);
 
 					cell.treeNodeCount = buildInfo.totalNodeCount;
-					cell.treeOffset    = (u32)m_gpuLightTree.size();
 
-					m_gpuLightTree.resize(m_gpuLightTree.size() + buildInfo.totalNodeCount);
+					if (buildParams.useShallowTree)
+					{
+						cell.treeOffset = (u32)m_gpuLightTreeShallow.size();
+						m_gpuLightTreeShallow.resize(m_gpuLightTreeShallow.size() + buildInfo.totalNodeCount);
+					}
+					else
+					{
+						cell.treeOffset = (u32)m_gpuLightTree.size();
+						m_gpuLightTree.resize(m_gpuLightTree.size() + buildInfo.totalNodeCount);
+					}
+
 					m_treeBuildQueue.push_back(cellIndex);
 
 					result.treeCellCount++;
@@ -661,8 +794,16 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 			}
 #endif
 
-			buildLightTreeBottomUp(treeBuildParams, m_lightIntervals, m_tileIntervalIndicesSorted, cell.lightOffset,
-			    cell.lightCount, &m_gpuLightTree[cell.treeOffset], cellIndex);
+			if (buildParams.useShallowTree)
+			{
+				buildLightTreeBottomUpShallow(treeBuildParams, m_lightIntervals, m_tileIntervalIndicesSorted,
+				    cell.lightOffset, cell.lightCount, &m_gpuLightTreeShallow[cell.treeOffset], cellIndex);
+			}
+			else
+			{
+				buildLightTreeBottomUp(treeBuildParams, m_lightIntervals, m_tileIntervalIndicesSorted, cell.lightOffset,
+				    cell.lightCount, &m_gpuLightTree[cell.treeOffset], cellIndex);
+			}
 
 			for (u32 i = 0; i < cell.lightCount; ++i)
 			{
@@ -676,16 +817,37 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 
 		RUSH_ASSERT(m_gpuLightIndices.size() == m_tileIntervalIndicesSorted.size());
 
-		if (m_gpuLightTree.empty())
+		if (buildParams.useShallowTree)
 		{
-			PackedLightTreeNode dummyNode = {};
-			m_gpuLightTree.push_back(dummyNode);
-		}
+			RUSH_ASSERT(m_gpuLightTree.empty());
 
+			if (m_gpuLightTreeShallow.empty())
+			{
+				ShallowLightTreeNode dummyNode = {};
+				m_gpuLightTreeShallow.push_back(dummyNode);
+			}
+
+			{
+				result.uploadTime -= timer.time();
+				result.treeDataSize += Gfx_UpdateBufferT(ctx, m_lightTreeBuffer, m_gpuLightTreeShallow);
+				result.uploadTime += timer.time();
+			}
+		}
+		else
 		{
-			result.uploadTime -= timer.time();
-			result.treeDataSize += Gfx_UpdateBufferT(ctx, m_lightTreeBuffer, m_gpuLightTree);
-			result.uploadTime += timer.time();
+			RUSH_ASSERT(m_gpuLightTreeShallow.empty());
+
+			if (m_gpuLightTree.empty())
+			{
+				PackedLightTreeNode dummyNode = {};
+				m_gpuLightTree.push_back(dummyNode);
+			}
+
+			{
+				result.uploadTime -= timer.time();
+				result.treeDataSize += Gfx_UpdateBufferT(ctx, m_lightTreeBuffer, m_gpuLightTree);
+				result.uploadTime += timer.time();
+			}
 		}
 
 		result.buildTreeTime += timer.time();
