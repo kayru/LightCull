@@ -5,7 +5,6 @@
 #include "Shader.h"
 
 #include <Rush/GfxCommon.h>
-#include <Rush/GfxRef.h>
 #include <Rush/MathTypes.h>
 #include <Rush/UtilCamera.h>
 #include <Rush/UtilTuple.h>
@@ -77,9 +76,9 @@ struct TiledLightTreeBuildResult
 	u32 lightDataSize = 0;
 	u32 treeDataSize  = 0;
 
-	GfxBuffer lightTreeBuffer;
-	GfxBuffer lightIndexBuffer;
-	GfxBuffer lightTileInfoBuffer;
+	GfxRef<GfxBuffer> lightTreeBuffer;
+	GfxRef<GfxBuffer> lightIndexBuffer;
+	GfxRef<GfxBuffer> lightTileInfoBuffer;
 };
 
 struct TiledLightTreeBuildParams : CommonLightBuildParams
@@ -134,12 +133,12 @@ public:
 	std::vector<LightSource>                  m_gpuLights;
 	std::vector<u16>                          m_gpuLightIndices;
 
-	GfxBufferRef m_lightIndexBuffer;
-	GfxBufferRef m_lightTreeBuffer;
-	GfxBufferRef m_lightTileInfoBuffer;
+	GfxOwn<GfxBuffer> m_lightIndexBuffer;
+	GfxOwn<GfxBuffer> m_lightTreeBuffer;
+	GfxOwn<GfxBuffer> m_lightTileInfoBuffer;
 
-	GfxBufferRef m_lightDepthIntervalBuffer;
-	GfxBufferRef m_lightDepthIntervalIndexBuffer;
+	GfxOwn<GfxBuffer> m_lightDepthIntervalBuffer;
+	GfxOwn<GfxBuffer> m_lightDepthIntervalIndexBuffer;
 
 	AlignedArray<LightGridCell> m_lightGrid;
 	AlignedArray<u16>           m_tileIntervalIndices;

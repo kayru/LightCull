@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Rush/GfxCommon.h>
-#include <Rush/GfxRef.h>
+#include <Rush/GfxDevice.h>
 
 struct GpuBuffer
 {
@@ -22,7 +22,7 @@ struct GpuBuffer
 	{
 		if (elementCount == 0)
 		{
-			m_buffer = GfxBufferRef();
+			m_buffer = InvalidResourceHandle();
 		}
 		else if (m_elementCount != elementCount)
 		{
@@ -33,7 +33,7 @@ struct GpuBuffer
 			bufferDesc.flags  = m_flags;
 			bufferDesc.format = m_format;
 
-			m_buffer.takeover(Gfx_CreateBuffer(bufferDesc));
+			m_buffer = Gfx_CreateBuffer(bufferDesc);
 		}
 
 		m_elementCount = elementCount;
@@ -43,11 +43,11 @@ struct GpuBuffer
 
 	GfxBuffer get() { return m_buffer.get(); }
 
-	GfxBufferRef   m_buffer;
-	u32            m_elementSize;
-	u32            m_elementCount;
-	GfxBufferFlags m_flags;
-	GfxFormat      m_format;
+	GfxOwn<GfxBuffer> m_buffer;
+	u32               m_elementSize;
+	u32               m_elementCount;
+	GfxBufferFlags    m_flags;
+	GfxFormat         m_format;
 };
 
 template <typename T> struct GpuBufferT : GpuBuffer

@@ -78,13 +78,13 @@ LightCullApp::LightCullApp() : BaseApplication()
 	{
 		GfxRasterizerDesc rasterizerDesc;
 		rasterizerDesc.cullMode = GfxCullMode::CW;
-		m_rasterizerState.takeover(Gfx_CreateRasterizerState(rasterizerDesc));
+		m_rasterizerState = Gfx_CreateRasterizerState(rasterizerDesc);
 	}
 
 	{
 		GfxRasterizerDesc rasterizerDesc;
 		rasterizerDesc.cullMode = GfxCullMode::None;
-		m_rasterizerStateNoCull.takeover(Gfx_CreateRasterizerState(rasterizerDesc));
+		m_rasterizerStateNoCull = Gfx_CreateRasterizerState(rasterizerDesc);
 	}
 
 	{
@@ -92,8 +92,8 @@ LightCullApp::LightCullApp() : BaseApplication()
 		const u32 defaultNormalPixels[] = {0x00FF0000};
 
 		GfxTextureDesc defaultTextureDesc = GfxTextureDesc::make2D(1, 1);
-		m_defaultAlbedoTexture.takeover(Gfx_CreateTexture(defaultTextureDesc, defaultAlbedoPixels));
-		m_defaultNormalTexture.takeover(Gfx_CreateTexture(defaultTextureDesc, defaultNormalPixels));
+		m_defaultAlbedoTexture = Gfx_CreateTexture(defaultTextureDesc, defaultAlbedoPixels);
+		m_defaultNormalTexture = Gfx_CreateTexture(defaultTextureDesc, defaultNormalPixels);
 
 #if 0
 		u32 roughnessTextureWidth = 512;
@@ -120,20 +120,20 @@ LightCullApp::LightCullApp() : BaseApplication()
 #endif
 
 		GfxTextureDesc roughnessTextureDesc = GfxTextureDesc::make2D(roughnessTextureWidth, roughnessTextureWidth);
-		m_defaultRoughnessTexture.takeover(Gfx_CreateTexture(roughnessTextureDesc, roughnessPixels.data()));
+		m_defaultRoughnessTexture = Gfx_CreateTexture(roughnessTextureDesc, roughnessPixels.data());
 	}
 
 	{
 		GfxSamplerDesc samplerDesc = GfxSamplerDesc::makeLinear();
 		samplerDesc.anisotropy     = 8;
-		m_samplerAniso8.takeover(Gfx_CreateSamplerState(samplerDesc));
+		m_samplerAniso8 = Gfx_CreateSamplerState(samplerDesc);
 	}
 
 	createShaders();
 
-	m_sceneConstantBuffer.takeover(Gfx_CreateConstantBuffer(GfxBufferFlags::Transient, sizeof(SceneConstants)));
-	m_instanceConstantBuffer.takeover(Gfx_CreateConstantBuffer(GfxBufferFlags::Transient, sizeof(InstanceConstants)));
-	m_lightingConstantBuffer.takeover(Gfx_CreateConstantBuffer(GfxBufferFlags::Transient, sizeof(LightingConstants)));
+	m_sceneConstantBuffer = Gfx_CreateConstantBuffer(GfxBufferFlags::Transient, sizeof(SceneConstants));
+	m_instanceConstantBuffer = Gfx_CreateConstantBuffer(GfxBufferFlags::Transient, sizeof(InstanceConstants));
+	m_lightingConstantBuffer = Gfx_CreateConstantBuffer(GfxBufferFlags::Transient, sizeof(LightingConstants));
 
 	if (g_appConfig.argc > 1 && endsWith(g_appConfig.argv[1], ".json"))
 	{
@@ -260,7 +260,7 @@ void LightCullApp::updateLights()
 		bufferDesc.stride = (u32)sizeof(LightSource);
 		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		m_lightSourceBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_lightSourceBuffer = Gfx_CreateBuffer(bufferDesc);
 	}
 	Gfx_UpdateBuffer(m_ctx, m_lightSourceBuffer, lightData, u32(lightDataSize));
 }
@@ -551,7 +551,7 @@ void LightCullApp::drawGbuffer()
 				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, material.normalTexture);
 				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, material.roughnessTexture);
 
-				instanceConstants.useNormalMap = material.normalTexture == m_defaultNormalTexture ? 0 : 1;
+				instanceConstants.useNormalMap = material.normalTexture.get() == m_defaultNormalTexture.get() ? 0 : 1;
 			}
 			else
 			{
@@ -658,7 +658,7 @@ void LightCullApp::buildLighting(GfxContext* ctx)
 
 		constants.useExponentialSlices = m_tiledLightTreeBuilderParams.useExponentialSlices;
 
-		Gfx_UpdateBuffer(ctx, m_lightingConstantBuffer, constants);
+		Gfx_UpdateBufferT(ctx, m_lightingConstantBuffer, constants);
 	}
 	else if (m_lightingMode == LightingMode::Tree)
 	{
@@ -702,7 +702,7 @@ void LightCullApp::buildLighting(GfxContext* ctx)
 
 		constants.useExponentialSlices = m_tiledLightTreeBuilderParams.useExponentialSlices;
 
-		Gfx_UpdateBuffer(ctx, m_lightingConstantBuffer, constants);
+		Gfx_UpdateBufferT(ctx, m_lightingConstantBuffer, constants);
 	}
 	else if (m_lightingMode == LightingMode::Clustered)
 	{
@@ -730,7 +730,7 @@ void LightCullApp::buildLighting(GfxContext* ctx)
 
 		constants.useExponentialSlices = m_clusteredLightBuilderParams.useExponentialSlices;
 
-		Gfx_UpdateBuffer(ctx, m_lightingConstantBuffer, constants);
+		Gfx_UpdateBufferT(ctx, m_lightingConstantBuffer, constants);
 	}
 	else
 	{
@@ -1133,9 +1133,9 @@ void LightCullApp::draw()
 	++m_frameCount;
 }
 
-GfxTextureRef LightCullApp::loadTextureFromMemory(const void* data, Tuple2i size, GfxFormat format, bool convertToRGBA8)
+GfxRef<GfxTexture> LightCullApp::loadTextureFromMemory(const void* data, Tuple2i size, GfxFormat format, bool convertToRGBA8)
 {
-	GfxTextureRef texture;
+	GfxRef<GfxTexture> texture;
 
 	if (convertToRGBA8 || format == GfxFormat_RGBA8_Unorm)
 	{
@@ -1173,7 +1173,7 @@ GfxTextureRef LightCullApp::loadTextureFromMemory(const void* data, Tuple2i size
 		GfxTextureDesc desc = GfxTextureDesc::make2D(size.x, size.y, GfxFormat_RGBA8_Unorm);
 		desc.mips           = 1;
 
-		texture.takeover(Gfx_CreateTexture(desc, &textureData, 1));
+		texture.retain(Gfx_CreateTexture(desc, &textureData, 1));
 	}
 	else
 	{
@@ -1182,13 +1182,13 @@ GfxTextureRef LightCullApp::loadTextureFromMemory(const void* data, Tuple2i size
 		GfxTextureDesc desc = GfxTextureDesc::make2D(size.x, size.y, format);
 		desc.mips           = 1;
 
-		texture.takeover(Gfx_CreateTexture(desc, &textureData, 1));
+		texture.retain(Gfx_CreateTexture(desc, &textureData, 1));
 	}
 
 	return texture;
 }
 
-GfxTextureRef LightCullApp::loadTextureFromFile(const std::string& filename)
+GfxRef<GfxTexture> LightCullApp::loadTextureFromFile(const std::string& filename)
 {
 	std::string filenameLower = filename;
 	std::transform(filenameLower.begin(), filenameLower.end(), filenameLower.begin(), ::tolower);
@@ -1198,15 +1198,15 @@ GfxTextureRef LightCullApp::loadTextureFromFile(const std::string& filename)
 	{
 		Log::message("Loading texture '%s'", filenameLower.c_str());
 
-		GfxTextureRef texture;
+		GfxRef<GfxTexture> texture;
 
 		if (endsWith(filenameLower, ".dds"))
 		{
-			texture = loadDDS(filenameLower.c_str());
+			texture.retain(loadDDS(filenameLower.c_str()));
 		}
 		else if (endsWith(filenameLower, ".tga") || endsWith(filenameLower, ".png"))
 		{
-			texture = loadBitmap(filenameLower.c_str());
+			texture.retain(loadBitmap(filenameLower.c_str()));
 		}
 
 		m_textures.insert(std::make_pair(filenameLower, texture));
@@ -1413,11 +1413,11 @@ void LightCullApp::generateDebugMeshes()
 
 	GfxBufferDesc vbDesc(
 	    GfxBufferFlags::Vertex, m_debugSphereMesh.m_vertexCount, sizeof(ModelVertex));
-	m_debugSphereMesh.m_vertexBuffer.takeover(Gfx_CreateBuffer(vbDesc, vertices.data()));
+	m_debugSphereMesh.m_vertexBuffer = Gfx_CreateBuffer(vbDesc, vertices.data());
 
 	GfxBufferDesc ibDesc(
 	    GfxBufferFlags::Index, GfxFormat_R32_Uint, m_debugSphereMesh.m_indexCount, 4);
-	m_debugSphereMesh.m_indexBuffer.takeover(Gfx_CreateBuffer(ibDesc, indices.data()));
+	m_debugSphereMesh.m_indexBuffer = Gfx_CreateBuffer(ibDesc, indices.data());
 }
 
 void LightCullApp::generateMeshes()
@@ -1430,9 +1430,9 @@ void LightCullApp::generateMeshes()
 	auto makeMaterial = [&](const Vec3 baseColor) {
 		Material material;
 		material.baseColor        = Vec4(baseColor, 1.0f);
-		material.albedoTexture    = m_defaultAlbedoTexture;
-		material.normalTexture    = m_defaultNormalTexture;
-		material.roughnessTexture = m_defaultRoughnessTexture;
+		material.albedoTexture.retain(m_defaultAlbedoTexture);
+		material.normalTexture.retain(m_defaultNormalTexture);
+		material.roughnessTexture.retain(m_defaultRoughnessTexture);
 		return material;
 	};
 
@@ -1530,10 +1530,10 @@ void LightCullApp::generateMeshes()
 	m_indexCount  = (u32)indices.size();
 
 	GfxBufferDesc vbDesc(GfxBufferFlags::Vertex, m_vertexCount, sizeof(ModelVertex));
-	m_vertexBuffer.takeover(Gfx_CreateBuffer(vbDesc, vertices.data()));
+	m_vertexBuffer = Gfx_CreateBuffer(vbDesc, vertices.data());
 
 	GfxBufferDesc ibDesc(GfxBufferFlags::Index, GfxFormat_R32_Uint, m_indexCount, 4);
-	m_indexBuffer.takeover(Gfx_CreateBuffer(ibDesc, indices.data()));
+	m_indexBuffer = Gfx_CreateBuffer(ibDesc, indices.data());
 
 	m_lightAnimationBounds.m_min = Vec3(-64, 5.0f, -64);
 	m_lightAnimationBounds.m_max = Vec3(64, 1.0f, 64);
@@ -1608,11 +1608,7 @@ void LightCullApp::createShaders()
 		GfxTechniqueDesc desc(ps, vs, vf, bindings.desc);
 		desc.psWaveLimit = 0.25f;
 
-		m_techniqueGbuffer.takeover(Gfx_CreateTechnique(desc));
-
-		Gfx_Release(ps);
-		Gfx_Release(vs);
-		Gfx_Release(vf);
+		m_techniqueGbuffer = Gfx_CreateTechnique(desc);
 	}
 
 	{
@@ -1629,11 +1625,7 @@ void LightCullApp::createShaders()
 		bindings.addTexture("s_albedo", bindingIndex++);
 		bindings.addTexture("s_normal", bindingIndex++);
 		bindings.addTexture("s_roughness", bindingIndex++);
-		m_techniqueGbufferTranscode.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(ps, vs, vf, bindings.desc)));
-
-		Gfx_Release(ps);
-		Gfx_Release(vs);
-		Gfx_Release(vf);
+		m_techniqueGbufferTranscode = Gfx_CreateTechnique(GfxTechniqueDesc(ps, vs, vf, bindings.desc));
 	}
 
 	for (u32 debugVisualizationEnabled = 0; debugVisualizationEnabled < 2; ++debugVisualizationEnabled)
@@ -1675,15 +1667,13 @@ void LightCullApp::createShaders()
 			specializationData.threadGroupSizeX          = m_threadGroupSizeHybridTiledLightTreeShading.x;
 			specializationData.threadGroupSizeY          = m_threadGroupSizeHybridTiledLightTreeShading.y;
 
-			GfxTechniqueDesc desc(cs, bindings.desc);
+			GfxTechniqueDesc desc(cs, bindings.desc, m_threadGroupSizeHybridTiledLightTreeShading);
 			desc.specializationConstants     = specializationConstants;
 			desc.specializationConstantCount = RUSH_COUNTOF(specializationConstants);
 			desc.specializationData          = &specializationData;
 			desc.specializationDataSize      = sizeof(specializationData);
 
-			m_techniqueHybridTiledLightTreeShading[debugVisualizationEnabled].takeover(Gfx_CreateTechnique(desc));
-
-			Gfx_Release(cs);
+			m_techniqueHybridTiledLightTreeShading[debugVisualizationEnabled] = Gfx_CreateTechnique(desc);
 		}
 
 		{
@@ -1711,14 +1701,12 @@ void LightCullApp::createShaders()
 				specializationData.threadGroupSizeX          = m_threadGroupSizeTiledLightTreeShading.x;
 				specializationData.threadGroupSizeY          = m_threadGroupSizeTiledLightTreeShading.y;
 
-				GfxTechniqueDesc desc(cs, bindings.desc);
+				GfxTechniqueDesc desc(cs, bindings.desc, m_threadGroupSizeTiledLightTreeShading);
 				desc.specializationConstants     = specializationConstants;
 				desc.specializationConstantCount = RUSH_COUNTOF(specializationConstants);
 				desc.specializationData          = &specializationData;
 				desc.specializationDataSize      = sizeof(specializationData);
-				m_techniqueTiledLightTreeShading[debugVisualizationEnabled].takeover(Gfx_CreateTechnique(desc));
-
-				Gfx_Release(cs);
+				m_techniqueTiledLightTreeShading[debugVisualizationEnabled] = Gfx_CreateTechnique(desc);
 			}
 
 			const GfxCapability& caps = Gfx_GetCapability();
@@ -1732,14 +1720,12 @@ void LightCullApp::createShaders()
 				specializationData.threadGroupSizeX          = m_threadGroupSizeTiledLightTreeShadingMasked.x;
 				specializationData.threadGroupSizeY          = m_threadGroupSizeTiledLightTreeShadingMasked.y;
 
-				GfxTechniqueDesc desc(cs, bindings.desc);
+				GfxTechniqueDesc desc(cs, bindings.desc, m_threadGroupSizeTiledLightTreeShadingMasked);
 				desc.specializationConstants     = specializationConstants;
 				desc.specializationConstantCount = RUSH_COUNTOF(specializationConstants);
 				desc.specializationData          = &specializationData;
 				desc.specializationDataSize      = sizeof(specializationData);
-				m_techniqueTiledLightTreeShadingMasked[debugVisualizationEnabled].takeover(Gfx_CreateTechnique(desc));
-
-				Gfx_Release(cs);
+				m_techniqueTiledLightTreeShadingMasked[debugVisualizationEnabled] = Gfx_CreateTechnique(desc);
 			}
 		}
 
@@ -1766,14 +1752,12 @@ void LightCullApp::createShaders()
 			specializationData.threadGroupSizeX          = m_threadGroupSizeClusteredShading.x;
 			specializationData.threadGroupSizeY          = m_threadGroupSizeClusteredShading.y;
 
-			GfxTechniqueDesc desc(cs, bindings.desc);
+			GfxTechniqueDesc desc(cs, bindings.desc, m_threadGroupSizeClusteredShading);
 			desc.specializationConstants     = specializationConstants;
 			desc.specializationConstantCount = RUSH_COUNTOF(specializationConstants);
 			desc.specializationData          = &specializationData;
 			desc.specializationDataSize      = sizeof(specializationData);
-			m_techniqueClusteredShading[debugVisualizationEnabled].takeover(Gfx_CreateTechnique(desc));
-
-			Gfx_Release(cs);
+			m_techniqueClusteredShading[debugVisualizationEnabled] = Gfx_CreateTechnique(desc);
 		}
 	}
 
@@ -1785,9 +1769,7 @@ void LightCullApp::createShaders()
 		bindings.addPushConstants("PushConstants", GfxStageFlags::Compute, 2 * sizeof(u32));
 		bindings.addStorageImage("outputImage", bindingIndex++);
 		bindings.addStorageBuffer("TileStatsBuffer", bindingIndex++);
-		m_techniqueTileStatsDisplay.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, bindings.desc)));
-
-		Gfx_Release(cs);
+		m_techniqueTileStatsDisplay = Gfx_CreateTechnique(GfxTechniqueDesc(cs, bindings.desc, {8,8,1}));
 	}
 
 	{
@@ -1798,9 +1780,7 @@ void LightCullApp::createShaders()
 		bindings.addPushConstants("PushConstants", GfxStageFlags::Compute, sizeof(u32));
 		bindings.addStorageBuffer("Input", bindingIndex++);
 		bindings.addStorageBuffer("Output", bindingIndex++);
-		m_techniqueTileStatsReduce.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, bindings.desc)));
-
-		Gfx_Release(cs);
+		m_techniqueTileStatsReduce = Gfx_CreateTechnique(GfxTechniqueDesc(cs, bindings.desc, {1024,1,1}));
 	}
 
 	{
@@ -1819,9 +1799,7 @@ void LightCullApp::createShaders()
 		bindings.addStorageBuffer("LightTreeBuffer", bindingIndex++);
 		bindings.addStorageBuffer("LightTileInfoBuffer", bindingIndex++);
 		bindings.addStorageBuffer("TileStatsBuffer", bindingIndex++);
-		m_techniqueTileStatsGenerate.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, bindings.desc)));
-
-		Gfx_Release(cs);
+		m_techniqueTileStatsGenerate = Gfx_CreateTechnique(GfxTechniqueDesc(cs, bindings.desc, {8,8,1}));
 	}
 }
 
@@ -1836,23 +1814,23 @@ void LightCullApp::createGbuffer(Tuple2i size)
 
 	desc.format = GfxFormat_RGBA8_Unorm;
 	desc.usage  = GfxUsageFlags::RenderTarget | GfxUsageFlags::ShaderResource;
-	m_gbufferBaseColor.takeover(Gfx_CreateTexture(desc));
+	m_gbufferBaseColor = Gfx_CreateTexture(desc);
 
 	desc.format = GfxFormat_RGBA16_Float;
 	desc.usage  = GfxUsageFlags::RenderTarget | GfxUsageFlags::ShaderResource;
-	m_gbufferNormal.takeover(Gfx_CreateTexture(desc));
+	m_gbufferNormal = Gfx_CreateTexture(desc);
 
 	desc.format = GfxFormat_R8_Unorm;
 	desc.usage  = GfxUsageFlags::RenderTarget | GfxUsageFlags::ShaderResource;
-	m_gbufferRoughness.takeover(Gfx_CreateTexture(desc));
+	m_gbufferRoughness = Gfx_CreateTexture(desc);
 
 	desc.format = GfxFormat_D32_Float;
 	desc.usage  = GfxUsageFlags::DepthStencil | GfxUsageFlags::ShaderResource;
-	m_gbufferDepth.takeover(Gfx_CreateTexture(desc));
+	m_gbufferDepth = Gfx_CreateTexture(desc);
 
 	desc.format = GfxFormat_RGBA16_Float;
 	desc.usage  = GfxUsageFlags::StorageImage | GfxUsageFlags::ShaderResource;
-	m_finalFrame.takeover(Gfx_CreateTexture(desc));
+	m_finalFrame = Gfx_CreateTexture(desc);
 
 	{
 		u32 dispatchWidth  = divUp(size.x, 8);
@@ -1864,7 +1842,7 @@ void LightCullApp::createGbuffer(Tuple2i size)
 		bufferDesc.stride = 4;
 		bufferDesc.count  = dispatchWidth * dispatchHeight;
 
-		m_tileStatsBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_tileStatsBuffer = Gfx_CreateBuffer(bufferDesc);
 	}
 
 	{
@@ -1875,7 +1853,7 @@ void LightCullApp::createGbuffer(Tuple2i size)
 		bufferDesc.count       = 1;
 		bufferDesc.hostVisible = true;
 
-		m_tileStatsReducedBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_tileStatsReducedBuffer = Gfx_CreateBuffer(bufferDesc);
 
 		m_tileStatsReducedMappedBuffer = Gfx_MapBuffer(m_tileStatsReducedBuffer.get());
 	}
@@ -2459,7 +2437,7 @@ bool LightCullApp::loadModel(const char* filename)
 
 		if (!material.albedoTexture.valid())
 		{
-			material.albedoTexture = m_defaultAlbedoTexture;
+			material.albedoTexture.retain(m_defaultAlbedoTexture);
 		}
 
 		if (offlineMaterial.roughnessTexture[0])
@@ -2468,7 +2446,7 @@ bool LightCullApp::loadModel(const char* filename)
 		}
 		if (!material.roughnessTexture.valid())
 		{
-			material.roughnessTexture = m_defaultRoughnessTexture;
+			material.roughnessTexture.retain(m_defaultRoughnessTexture);
 		}
 
 		if (offlineMaterial.normalTexture[0])
@@ -2477,7 +2455,7 @@ bool LightCullApp::loadModel(const char* filename)
 		}
 		if (!material.normalTexture.valid())
 		{
-			material.normalTexture = m_defaultNormalTexture;
+			material.normalTexture.retain(m_defaultNormalTexture);
 		}
 
 		material.baseColor = offlineMaterial.baseColor;
@@ -2499,10 +2477,10 @@ bool LightCullApp::loadModel(const char* filename)
 	m_indexCount  = (u32)model.indices.size();
 
 	GfxBufferDesc vbDesc(GfxBufferFlags::Vertex, m_vertexCount, sizeof(ModelVertex));
-	m_vertexBuffer.takeover(Gfx_CreateBuffer(vbDesc, model.vertices.data()));
+	m_vertexBuffer = Gfx_CreateBuffer(vbDesc, model.vertices.data());
 
 	GfxBufferDesc ibDesc(GfxBufferFlags::Index, GfxFormat_R32_Uint, m_indexCount, 4);
-	m_indexBuffer.takeover(Gfx_CreateBuffer(ibDesc, model.indices.data()));
+	m_indexBuffer = Gfx_CreateBuffer(ibDesc, model.indices.data());
 
 	m_lightAnimationBounds = m_worldBoundingBox;
 

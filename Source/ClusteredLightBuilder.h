@@ -3,7 +3,6 @@
 #include "LightingCommon.h"
 
 #include <Rush/GfxCommon.h>
-#include <Rush/GfxRef.h>
 #include <Rush/MathTypes.h>
 #include <Rush/Rush.h>
 #include <Rush/UtilCamera.h>
@@ -57,8 +56,8 @@ public:
 	u32 m_lightDataSize = 0;
 	u32 m_lightGridSize = 0;
 
-	GfxBufferRef m_lightGridBuffer;
-	GfxBufferRef m_lightIndexBuffer;
+	GfxOwn<GfxBuffer> m_lightGridBuffer;
+	GfxOwn<GfxBuffer> m_lightIndexBuffer;
 
 	TileFrustumCache m_tileFrustumCache;
 };

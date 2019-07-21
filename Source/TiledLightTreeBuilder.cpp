@@ -90,7 +90,7 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		bufferDesc.stride = 4;
 		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_R16_Uint;
-		m_lightIndexBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_lightIndexBuffer = Gfx_CreateBuffer(bufferDesc);
 	}
 
 	{
@@ -99,7 +99,7 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		bufferDesc.stride = (u32)sizeof(PackedLightTreeNode);
 		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		m_lightTreeBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_lightTreeBuffer = Gfx_CreateBuffer(bufferDesc);
 	}
 
 	{
@@ -108,7 +108,7 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		bufferDesc.stride = (u32)sizeof(LightGridCell);
 		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		m_lightTileInfoBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_lightTileInfoBuffer = Gfx_CreateBuffer(bufferDesc);
 	}
 
 	{
@@ -117,7 +117,7 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		bufferDesc.stride = (u32)sizeof(LightDepthInterval);
 		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		m_lightDepthIntervalBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_lightDepthIntervalBuffer = Gfx_CreateBuffer(bufferDesc);
 	}
 
 	{
@@ -126,7 +126,7 @@ TiledLightTreeBuilder::TiledLightTreeBuilder(u32 maxLights)
 		bufferDesc.stride = (u32)sizeof(u32);
 		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		m_lightDepthIntervalIndexBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_lightDepthIntervalIndexBuffer = Gfx_CreateBuffer(bufferDesc);
 	}
 }
 
@@ -829,7 +829,7 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 
 			{
 				result.uploadTime -= timer.time();
-				result.treeDataSize += Gfx_UpdateBufferT(ctx, m_lightTreeBuffer, m_gpuLightTreeShallow);
+				result.treeDataSize += updateBufferFromArray(ctx, m_lightTreeBuffer.get(), m_gpuLightTreeShallow);
 				result.uploadTime += timer.time();
 			}
 		}
@@ -845,7 +845,7 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 
 			{
 				result.uploadTime -= timer.time();
-				result.treeDataSize += Gfx_UpdateBufferT(ctx, m_lightTreeBuffer, m_gpuLightTree);
+				result.treeDataSize += updateBufferFromArray(ctx, m_lightTreeBuffer.get(), m_gpuLightTree);
 				result.uploadTime += timer.time();
 			}
 		}
@@ -857,7 +857,7 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 	{
 		result.uploadTime -= timer.time();
 
-		result.treeDataSize = Gfx_UpdateBufferT(ctx, m_lightTileInfoBuffer, m_lightGrid);
+		result.treeDataSize = updateBufferFromArray(ctx, m_lightTileInfoBuffer.get(), m_lightGrid);
 
 		if (m_gpuLightIndices.empty())
 		{
@@ -866,15 +866,15 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 
 		{
 			static_assert(sizeof(*viewSpaceLights.data()) == sizeof(*m_gpuLights.data()), "");
-			result.lightDataSize += Gfx_UpdateBufferT(ctx, m_lightIndexBuffer, m_gpuLightIndices);
+			result.lightDataSize += updateBufferFromArray(ctx, m_lightIndexBuffer.get(), m_gpuLightIndices);
 		}
 
 		result.uploadTime += timer.time();
 	}
 
-	result.lightTreeBuffer     = m_lightTreeBuffer.get();
-	result.lightIndexBuffer    = m_lightIndexBuffer.get();
-	result.lightTileInfoBuffer = m_lightTileInfoBuffer.get();
+	result.lightTreeBuffer.retain(m_lightTreeBuffer.get());
+	result.lightIndexBuffer.retain(m_lightIndexBuffer.get());
+	result.lightTileInfoBuffer.retain(m_lightTileInfoBuffer.get());
 
 	result.hierarchicalCullingDepthThreshold = maxSliceDepth;
 	result.sliceCount                        = sliceCount;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Rush/GfxDevice.h>
-#include <Rush/GfxRef.h>
 #include <Rush/MathTypes.h>
 #include <Rush/UtilFile.h>
 
@@ -157,17 +156,17 @@ template <typename T> struct AlignedArray
 	size_t m_count    = 0;
 };
 
-template <typename T> u32 Gfx_UpdateBufferT(GfxContext* rc, GfxBuffer h, const AlignedArray<T>& data)
+template <typename ArrayType> u32 updateBufferFromArray(GfxContext* rc, GfxBuffer h, const ArrayType& data)
 {
 	u32 dataSize = (u32)(data.size() * sizeof(data[0]));
 	Gfx_UpdateBuffer(rc, h, data.data(), dataSize);
 	return dataSize;
 }
 
-GfxTextureRef loadDDS(const char* filename);
-GfxTextureRef loadBitmap(const char* filename, bool flipY = false);
+GfxOwn<GfxTexture> loadDDS(const char* filename);
+GfxOwn<GfxTexture> loadBitmap(const char* filename, bool flipY = false);
 
-inline GfxBuffer Gfx_CreateConstantBuffer(GfxBufferFlags flags, u32 size, const void* data = nullptr)
+inline GfxOwn<GfxBuffer> Gfx_CreateConstantBuffer(GfxBufferFlags flags, u32 size, const void* data = nullptr)
 {
 	GfxBufferDesc desc(GfxBufferFlags::Constant | flags, GfxFormat_Unknown, 1, size);
 	return Gfx_CreateBuffer(desc, data);

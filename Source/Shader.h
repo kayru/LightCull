@@ -2,7 +2,6 @@
 
 #include <Rush/GfxCommon.h>
 #include <Rush/GfxDevice.h>
-#include <Rush/GfxRef.h>
 
 enum GfxBindingType
 {
@@ -79,12 +78,11 @@ struct ShaderBingingsBuilder
 class ComputeShader
 {
 public:
-	ComputeShader(const GfxShaderSource& source, std::initializer_list<ShaderResourceBinding> bindings)
+	ComputeShader(const GfxShaderSource& source, std::initializer_list<ShaderResourceBinding> bindings, const Tuple3<u16>& workGroupSize)
 	: m_bindings(bindings)
 	{
-		auto cs = Gfx_CreateComputeShader(source);
-		m_technique.takeover(Gfx_CreateTechnique(GfxTechniqueDesc(cs, m_bindings.desc)));
-		Gfx_Release(cs);
+		GfxOwn<GfxComputeShader> cs = Gfx_CreateComputeShader(source);
+		m_technique = Gfx_CreateTechnique(GfxTechniqueDesc(cs, m_bindings.desc, workGroupSize));
 	}
 
 	void dispatch(GfxContext* ctx, u32 x, u32 y = 1, u32 z = 1)
@@ -128,6 +126,6 @@ public:
 	}
 
 private:
-	GfxTechniqueRef       m_technique;
+	GfxOwn<GfxTechnique>  m_technique;
 	ShaderBingingsBuilder m_bindings;
 };

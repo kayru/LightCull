@@ -13,11 +13,9 @@
 #include <Rush/GfxBitmapFont.h>
 #include <Rush/GfxDevice.h>
 #include <Rush/GfxPrimitiveBatch.h>
-#include <Rush/GfxRef.h>
 #include <Rush/MathTypes.h>
 #include <Rush/Platform.h>
 #include <Rush/UtilCamera.h>
-#include <Rush/UtilCameraManipulator.h>
 #include <Rush/UtilColor.h>
 #include <Rush/UtilRandom.h>
 #include <Rush/UtilTimer.h>
@@ -169,8 +167,8 @@ private:
 
 	void startReplay();
 
-	GfxTextureRef loadTextureFromFile(const std::string& filename);
-	GfxTextureRef loadTextureFromMemory(const void* data, Tuple2i size, GfxFormat format, bool convertToRGBA8 = false);
+	GfxRef<GfxTexture> loadTextureFromFile(const std::string& filename);
+	GfxRef<GfxTexture> loadTextureFromMemory(const void* data, Tuple2i size, GfxFormat format, bool convertToRGBA8 = false);
 
 	void finishProfilingExperiment();
 
@@ -209,54 +207,54 @@ private:
 
 	CameraManipulator m_cameraMan;
 
-	GfxRasterizerStateRef m_rasterizerState;
-	GfxRasterizerStateRef m_rasterizerStateNoCull;
+	GfxOwn<GfxRasterizerState> m_rasterizerState;
+	GfxOwn<GfxRasterizerState> m_rasterizerStateNoCull;
 
 	// yuriy_todo: add a helper wrapper for shader and all the bindings,
 	// so everything is in one place (resource declaration, setup and actual dispatch)
-	GfxTechniqueRef m_techniqueGbuffer;
-	GfxTechniqueRef m_techniqueTiledLightTreeShading[2];
-	GfxTechniqueRef m_techniqueTiledLightTreeShadingMasked[2];
-	GfxTechniqueRef m_techniqueHybridTiledLightTreeShading[2];
-	GfxTechniqueRef m_techniqueClusteredShading[2];
-	GfxTechniqueRef m_techniqueTileStatsDisplay;
-	GfxTechniqueRef m_techniqueTileStatsGenerate;
-	GfxTechniqueRef m_techniqueTileStatsReduce;
-	GfxTechniqueRef m_techniqueGbufferTranscode;
+	GfxOwn<GfxTechnique> m_techniqueGbuffer;
+	GfxOwn<GfxTechnique> m_techniqueTiledLightTreeShading[2];
+	GfxOwn<GfxTechnique> m_techniqueTiledLightTreeShadingMasked[2];
+	GfxOwn<GfxTechnique> m_techniqueHybridTiledLightTreeShading[2];
+	GfxOwn<GfxTechnique> m_techniqueClusteredShading[2];
+	GfxOwn<GfxTechnique> m_techniqueTileStatsDisplay;
+	GfxOwn<GfxTechnique> m_techniqueTileStatsGenerate;
+	GfxOwn<GfxTechnique> m_techniqueTileStatsReduce;
+	GfxOwn<GfxTechnique> m_techniqueGbufferTranscode;
 
-	Tuple2u m_threadGroupSizeClusteredShading            = {8, 8};
-	Tuple2u m_threadGroupSizeTiledLightTreeShading       = {8, 8};
-	Tuple2u m_threadGroupSizeTiledLightTreeShadingMasked = {8, 8};
-	Tuple2u m_threadGroupSizeHybridTiledLightTreeShading = {8, 8};
+	Tuple3<u16> m_threadGroupSizeClusteredShading            = {8, 8, 1};
+	Tuple3<u16> m_threadGroupSizeTiledLightTreeShading       = {8, 8, 1};
+	Tuple3<u16> m_threadGroupSizeTiledLightTreeShadingMasked = {8, 8, 1};
+	Tuple3<u16> m_threadGroupSizeHybridTiledLightTreeShading = {8, 8, 1};
 
-	GfxSamplerRef   m_samplerAniso8;
-	GfxTextureRef   m_defaultAlbedoTexture;
-	GfxTextureRef   m_defaultNormalTexture;
-	GfxTextureRef   m_defaultRoughnessTexture;
-	GfxTextureRef   m_gbufferBaseColor;
-	GfxTextureRef   m_gbufferNormal;
-	GfxTextureRef   m_gbufferRoughness;
-	GfxTextureRef   m_gbufferDepth;
-	GfxTextureRef   m_finalFrame;
-	GfxTextureRef   m_falseColorTexture;
-	GfxTextureRef   m_lightMarkerTexture;
-	GfxBufferRef    m_vertexBuffer;
-	GfxBufferRef    m_indexBuffer;
-	GfxBufferRef    m_sceneConstantBuffer;
-	GfxBufferRef    m_instanceConstantBuffer;
-	GfxBufferRef    m_lightingConstantBuffer;
-	GfxBufferRef    m_tileStatsBuffer; // contains count of pixels that used a light tree (as opposed to a light list)
-	GfxBufferRef    m_tileStatsReducedBuffer;
+	GfxOwn<GfxSampler> m_samplerAniso8;
+	GfxOwn<GfxTexture> m_defaultAlbedoTexture;
+	GfxOwn<GfxTexture> m_defaultNormalTexture;
+	GfxOwn<GfxTexture> m_defaultRoughnessTexture;
+	GfxOwn<GfxTexture> m_gbufferBaseColor;
+	GfxOwn<GfxTexture> m_gbufferNormal;
+	GfxOwn<GfxTexture> m_gbufferRoughness;
+	GfxOwn<GfxTexture> m_gbufferDepth;
+	GfxOwn<GfxTexture> m_finalFrame;
+	GfxRef<GfxTexture> m_falseColorTexture;
+	GfxRef<GfxTexture> m_lightMarkerTexture;
+	GfxOwn<GfxBuffer>  m_vertexBuffer;
+	GfxOwn<GfxBuffer>  m_indexBuffer;
+	GfxOwn<GfxBuffer>  m_sceneConstantBuffer;
+	GfxOwn<GfxBuffer>  m_instanceConstantBuffer;
+	GfxOwn<GfxBuffer>  m_lightingConstantBuffer;
+	GfxOwn<GfxBuffer>  m_tileStatsBuffer; // contains count of pixels that used a light tree (as opposed to a light list)
+	GfxOwn<GfxBuffer>  m_tileStatsReducedBuffer;
 	GfxMappedBuffer m_tileStatsReducedMappedBuffer;
 
 	GfxPassFlags m_gbufferClearFlags = GfxPassFlags::ClearAll;
 
 	struct StaticGbuffer
 	{
-		GfxTextureRef depth;
-		GfxTextureRef albedo;
-		GfxTextureRef normals;
-		GfxTextureRef specularRM;
+		GfxOwn<GfxTexture> depth;
+		GfxOwn<GfxTexture> albedo;
+		GfxOwn<GfxTexture> normals;
+		GfxOwn<GfxTexture> specularRM;
 	};
 
 	StaticGbuffer m_staticGbuffer;
@@ -332,7 +330,7 @@ private:
 	int m_lightCount = 10000;
 
 	std::vector<LightSource> m_viewSpaceLights;
-	GfxBufferRef             m_lightSourceBuffer; // contains data from m_viewSpaceLights
+	GfxOwn<GfxBuffer>        m_lightSourceBuffer; // contains data from m_viewSpaceLights
 
 	std::vector<AnimatedLightSource> m_lights;
 
@@ -441,10 +439,10 @@ private:
 
 	struct DebugMesh
 	{
-		GfxBufferRef m_vertexBuffer;
-		GfxBufferRef m_indexBuffer;
-		u32          m_indexCount  = 0;
-		u32          m_vertexCount = 0;
+		GfxOwn<GfxBuffer> m_vertexBuffer;
+		GfxOwn<GfxBuffer> m_indexBuffer;
+		u32               m_indexCount  = 0;
+		u32               m_vertexCount = 0;
 	};
 
 	DebugMesh m_debugSphereMesh;

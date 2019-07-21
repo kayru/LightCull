@@ -32,9 +32,9 @@ bool endsWith(const std::string& value, const std::string& suffix)
 	return std::equal(suffix.rbegin(), suffix.rend(), value.rbegin());
 }
 
-GfxTextureRef loadBitmap(const char* filename, bool flipY)
+GfxOwn<GfxTexture> loadBitmap(const char* filename, bool flipY)
 {
-	GfxTextureRef texture;
+	GfxOwn<GfxTexture> texture;
 
 	int w, h, comp;
 	stbi_set_flip_vertically_on_load(flipY);
@@ -75,7 +75,7 @@ GfxTextureRef loadBitmap(const char* filename, bool flipY)
 		GfxTextureDesc desc = GfxTextureDesc::make2D(w, h);
 		desc.mips           = (u32)textureData.size();
 
-		texture.takeover(Gfx_CreateTexture(desc, textureData.data(), (u32)textureData.size()));
+		texture = Gfx_CreateTexture(desc, textureData.data(), (u32)textureData.size());
 
 		stbi_image_free(pixels);
 	}
@@ -83,9 +83,9 @@ GfxTextureRef loadBitmap(const char* filename, bool flipY)
 	return texture;
 }
 
-GfxTextureRef loadDDS(const char* filename)
+GfxOwn<GfxTexture> loadDDS(const char* filename)
 {
-	GfxTextureRef result;
+	GfxOwn<GfxTexture> result;
 
 	FileIn stream(filename);
 	if (!stream.valid())
@@ -206,7 +206,7 @@ GfxTextureRef loadDDS(const char* filename)
 		}
 	}
 
-	result.takeover(Gfx_CreateTexture(desc, textureData.data(), (u32)textureData.size()));
+	result = Gfx_CreateTexture(desc, textureData.data(), (u32)textureData.size());
 
 	return result;
 }

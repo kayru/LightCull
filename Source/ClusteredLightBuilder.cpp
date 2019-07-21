@@ -15,7 +15,7 @@ ClusteredLightBuilder::ClusteredLightBuilder(u32 maxLights)
 		bufferDesc.stride = 4;
 		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_R16_Uint;
-		m_lightIndexBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_lightIndexBuffer = Gfx_CreateBuffer(bufferDesc);
 	}
 
 	{
@@ -24,7 +24,7 @@ ClusteredLightBuilder::ClusteredLightBuilder(u32 maxLights)
 		bufferDesc.stride = (u32)sizeof(LightGridCell);
 		bufferDesc.flags  = GfxBufferFlags::Transient | GfxBufferFlags::Storage;
 		bufferDesc.format = GfxFormat_Unknown;
-		m_lightGridBuffer.takeover(Gfx_CreateBuffer(bufferDesc));
+		m_lightGridBuffer = Gfx_CreateBuffer(bufferDesc);
 	}
 }
 
@@ -170,8 +170,8 @@ ClusteredLightBuildResult ClusteredLightBuilder::build(GfxContext* ctx,
 	result.lightAssignTime += timer.time();
 
 	result.uploadTime -= timer.time();
-	m_lightGridSize = Gfx_UpdateBufferT(ctx, m_lightGridBuffer, m_lightGrid);
-	m_lightDataSize += Gfx_UpdateBufferT(ctx, m_lightIndexBuffer, m_gpuLightIndices);
+	m_lightGridSize = updateBufferFromArray(ctx, m_lightGridBuffer.get(), m_lightGrid);
+	m_lightDataSize += updateBufferFromArray(ctx, m_lightIndexBuffer.get(), m_gpuLightIndices);
 
 	result.uploadTime += timer.time();
 	result.totalDataSize = m_lightDataSize + m_lightGridSize;

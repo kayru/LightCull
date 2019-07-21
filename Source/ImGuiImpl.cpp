@@ -9,13 +9,13 @@
 namespace
 {
 
-GfxContext*          s_context = nullptr;
-Window*              s_window  = nullptr;
-GfxBlendState        s_blendState;
-GfxDepthStencilState s_depthState;
-GfxRasterizerState   s_rasterState;
-PrimitiveBatch*      s_prim = nullptr;
-GfxTexture           s_fontTexture;
+GfxContext*                  s_context = nullptr;
+Window*                      s_window  = nullptr;
+GfxOwn<GfxBlendState>        s_blendState;
+GfxOwn<GfxDepthStencilState> s_depthState;
+GfxOwn<GfxRasterizerState>   s_rasterState;
+PrimitiveBatch*              s_prim = nullptr;
+GfxOwn<GfxTexture>           s_fontTexture;
 
 class GuiWMI : public WindowMessageInterceptor
 {
@@ -217,10 +217,10 @@ void ImGuiImpl_Shutdown()
 	delete s_prim;
 	s_prim = nullptr;
 
-	Gfx_Release(s_fontTexture);
-	Gfx_Release(s_depthState);
-	Gfx_Release(s_rasterState);
-	Gfx_Release(s_blendState);
+	s_fontTexture.reset();
+	s_depthState.reset();
+	s_rasterState.reset();
+	s_blendState.reset();
 
 	Gfx_Release(s_context);
 
