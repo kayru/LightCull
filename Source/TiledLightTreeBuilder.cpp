@@ -627,7 +627,7 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 					continue;
 				}
 
-				bool useLightList = true;
+				bool useLightList = !buildParams.useShallowTree;
 
 				if (cellLightCount > (u32)buildParams.targetLightsPerLeaf)
 				{
@@ -671,18 +671,8 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 					node.next        = ~0u;
 
 					cell.treeNodeCount = 1;
-
-					if (buildParams.useShallowTree)
-					{
-						cell.treeOffset                = (u32)m_gpuLightTree.size();
-						ShallowLightTreeNode dummyNode = {};
-						m_gpuLightTreeShallow.push_back(dummyNode);
-					}
-					else
-					{
-						cell.treeOffset = (u32)m_gpuLightTree.size();
-						m_gpuLightTree.push_back(packNode(node, 0));
-					}
+					cell.treeOffset = (u32)m_gpuLightTree.size();
+					m_gpuLightTree.push_back(packNode(node, 0));
 
 					for (u32 i = 0; i < cellLightCount; ++i)
 					{
