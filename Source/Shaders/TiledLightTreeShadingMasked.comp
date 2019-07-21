@@ -37,7 +37,7 @@ void main()
 	uint tileCountY = divUp(g_outputHeight, g_tileSize);
 	uint tilesPerSlice = tileCountX*tileCountY;
 
-	ivec2 tilePos = SCALARIZE(pixelPos / ivec2(g_tileSize));
+	ivec2 tilePos = pixelPos / ivec2(g_tileSize);
 	uint lightGridIndex = SCALARIZE(tilePos.x + tilePos.y*tileCountX);
 	LightTileInfo tileInfo = g_lightTileInfo[lightGridIndex];
 	uint tileLightOffset = SCALARIZE(tileInfo.lightOffset);
