@@ -428,11 +428,14 @@ private:
 	void* m_scriptFiber = nullptr;
 	void* m_mainFiber   = nullptr;
 
+
+#if USE_FFMPEG
 	std::string m_captureVideoPath;
 	FILE*       m_ffmpegPipe = nullptr;
 
 	static void videoCaptureCallback(const ColorRGBA8* pixels, Tuple2u size, void* userData);
 	void        videoCaptureCallback(const ColorRGBA8* pixels, Tuple2u size);
+#endif // USE_FFMPEG
 
 	static constexpr bool m_useLightIndexBuffer = ENABLE_LIGHT_INDEX_BUFFER;
 	static_assert(m_useLightIndexBuffer, "Non-indexed lighting is not implemented");

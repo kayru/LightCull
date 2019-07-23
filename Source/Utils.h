@@ -7,12 +7,9 @@
 #include <new>
 #include <string>
 #include <vector>
+#include <xmmintrin.h>
 
-#ifdef _MSC_VER
-#include <ppl.h>
-#else
-#include <tbb/compat/ppl.h>
-#endif
+#include <TaskScheduler.h>
 
 template <typename T, size_t SIZE> struct MovingAverage
 {
@@ -64,23 +61,67 @@ std::string directoryFromFilename(const std::string& filename);
 
 #define USE_PARALLEL_ALGORITHMS 1
 
-#if USE_PARALLEL_ALGORITHMS
-
-template <typename T, typename F> inline void parallelForEach(T begin, T end, F f)
+inline enki::TaskScheduler* getTaskScheduler()
 {
-	Concurrency::parallel_for_each(begin, end, f);
-}
-
-#else
-
-template <typename T, typename F> inline void parallelForEach(T begin, T end, F f)
-{
-	for (auto it = begin; it != end; ++it)
+	static enki::TaskScheduler ts;
+	if (!ts.GetNumTaskThreads())
 	{
-		f(*it);
+		ts.Initialize();
 	}
+	return &ts;
 }
-#endif
+
+template <typename I, typename F>
+inline void parallelFor(I begin, I end, F fun)
+{
+#if USE_PARALLEL_ALGORITHMS
+	enki::TaskScheduler* ts = getTaskScheduler();
+	enki::TaskSet taskSet(end - begin,
+		[&](enki::TaskSetPartition range, I threadnum)
+	{
+		for (I i = range.start; i != range.end; ++i)
+		{
+			fun(i);
+		}
+	});
+	ts->AddTaskSetToPipe(&taskSet);
+	ts->WaitforTask(&taskSet);
+#else // USE_PARALLEL_ALGORITHMS
+	for (I i = begin; i != end; ++i)
+	{
+		fun(i);
+	}
+#endif // USE_PARALLEL_ALGORITHMS
+}
+
+template <typename I, typename F>
+inline void parallelForEach(I begin, I end, F fun)
+{
+#if USE_PARALLEL_ALGORITHMS
+	enki::TaskScheduler* ts = getTaskScheduler();
+	enki::TaskSet taskSet(u32(std::distance(begin, end)),
+		[&](enki::TaskSetPartition range, u32 threadnum)
+	{
+		I rangeBegin = begin;
+		std::advance(rangeBegin, range.start);
+
+		I rangeEnd = rangeBegin;
+		std::advance(rangeEnd, range.end - range.start);
+
+		for (I i = rangeBegin; i!=rangeEnd; ++i)
+		{
+			fun(*i);
+		}
+	});
+	ts->AddTaskSetToPipe(&taskSet);
+	ts->WaitforTask(&taskSet);
+#else // USE_PARALLEL_ALGORITHMS
+	for (I i = begin; i != end; ++i)
+	{
+		fun(*i);
+	}
+#endif // USE_PARALLEL_ALGORITHMS
+}
 
 inline u32 interlockedIncrement(u32& x)
 {

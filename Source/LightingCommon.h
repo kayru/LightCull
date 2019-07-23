@@ -87,14 +87,14 @@ struct CommonLightBuildParams
 inline u32 asUint(float f)
 {
 	u32 u;
-	std::memcpy(&u, &f, 4);
+	memcpy(&u, &f, 4);
 	return u;
 }
 
 inline float asFloat(u32 u)
 {
 	float f;
-	std::memcpy(&f, &u, 4);
+	memcpy(&f, &u, 4);
 	return f;
 }
 

@@ -1,9 +1,3 @@
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	link_directories("../External/assimp/lib")
-	include_directories("../External/assimp/include")
-	add_definitions(-DUSE_ASSIMP)
-endif()
-
 set(shaderDependencies
 	Shaders/Common.glsl
 	Shaders/LightingCommon.glsl
@@ -80,10 +74,15 @@ target_link_libraries(${app}
 	stb
 	gli
 	par_shapes
+	enkiTS
 )
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	target_compile_definitions(${app} PRIVATE USE_ASSIMP)
+
+	target_compile_definitions(${app} PRIVATE USE_FFMPEG=1)
+
+	link_directories("${CMAKE_SOURCE_DIR}/External/assimp/lib")
+	target_compile_definitions(${app} PRIVATE USE_ASSIMP=0)
 	target_include_directories(${app} PRIVATE "${CMAKE_SOURCE_DIR}/External/assimp/include")
 	target_link_libraries(${app}
 		${CMAKE_SOURCE_DIR}/External/assimp/lib/assimp-vc140-mt.lib
@@ -93,4 +92,5 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different
 		"${CMAKE_SOURCE_DIR}/External/assimp/bin/assimp-vc140-mt.dll"
 		$<TARGET_FILE_DIR:${app}>)
+
 endif()

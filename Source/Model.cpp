@@ -14,6 +14,7 @@
 #define strcpy_s strcpy
 #endif
 
+#if USE_ASSIMP
 void convertModel(const char* inputModel, const char* outputModel, float modelScale)
 {
 	Log::message("Converting model '%s' to '%s' using scale %f", inputModel, outputModel, modelScale);
@@ -23,6 +24,7 @@ void convertModel(const char* inputModel, const char* outputModel, float modelSc
 		model.write(outputModel);
 	}
 }
+#endif // USE_ASSIMP
 
 const u32 Model::magic = 0xfe892a37;
 

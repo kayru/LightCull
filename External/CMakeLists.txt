@@ -7,6 +7,7 @@ else()
 	add_definitions(-w)
 endif()
 
+add_subdirectory("enkiTS")
 add_subdirectory("gli")
 add_subdirectory("glm")
 add_subdirectory("imgui")

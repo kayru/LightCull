@@ -43,6 +43,7 @@ int main(int argc, char** argv)
 	Log::breakOnError = true;
 #endif
 
+#if USE_ASSIMP
 	if (argc > 4 && !strcmp(argv[1], "convert"))
 	{
 		const char* inputModel  = argv[2];
@@ -56,6 +57,7 @@ int main(int argc, char** argv)
 		convertModel(inputModel, outputModel, modelScale);
 		return 0;
 	}
+#endif // USE_ASSIMP
 
 	GfxConfig gfxConfig(g_appConfig);
 	gfxConfig.preferredCoordinateSystem = GfxConfig::PreferredCoordinateSystem_Direct3D;
@@ -208,11 +210,13 @@ LightCullApp::LightCullApp() : BaseApplication()
 
 LightCullApp::~LightCullApp()
 {
+#if USE_FFMPEG
 	if (m_ffmpegPipe)
 	{
 		_pclose(m_ffmpegPipe);
 		m_ffmpegPipe = nullptr;
 	}
+#endif // USE_FFMPEG
 
 	ImGuiImpl_Shutdown();
 
@@ -1105,13 +1109,13 @@ void LightCullApp::draw()
 					    (m_lightingMode == LightingMode::Tree && !m_useGpuLightTreeBuilder))
 					{
 						u32 count = m_tiledLightTreeBuilder->m_tileLightCount[tileIndex];
-						sprintf_s(tempString, "%d", count);
+						snprintf(tempString, RUSH_COUNTOF(tempString), "%d", count);
 						m_font->draw(m_prim, textPos, tempString, ColorRGBA8::White(), false);
 					}
 					else if (m_lightingMode == LightingMode::Clustered)
 					{
 						u32 count = m_clusteredLightBuilder->m_tileLightCount[tileIndex];
-						sprintf_s(tempString, "%d", count);
+						snprintf(tempString, RUSH_COUNTOF(tempString), "%d", count);
 						m_font->draw(m_prim, textPos, tempString, ColorRGBA8::White(), false);
 					}
 				}
@@ -1125,10 +1129,12 @@ void LightCullApp::draw()
 
 	Gfx_EndPass(m_ctx);
 
+#if USE_FFMPEG
 	if (!m_captureVideoPath.empty() && m_frameCount != 0 && m_ffmpegPipe)
 	{
 		Gfx_RequestScreenshot(videoCaptureCallback, this);
 	}
+#endif // USE_FFMPEG
 
 	++m_frameCount;
 }
@@ -1226,6 +1232,7 @@ void LightCullApp::finishProfilingExperiment()
 
 void LightCullApp::resetStats() { m_stats = Stats(); }
 
+#if USE_FFMPEG
 void LightCullApp::videoCaptureCallback(const ColorRGBA8* pixels, Tuple2u size, void* userData)
 {
 	reinterpret_cast<LightCullApp*>(userData)->videoCaptureCallback(pixels, size);
@@ -1238,6 +1245,7 @@ void LightCullApp::videoCaptureCallback(const ColorRGBA8* pixels, Tuple2u size)
 		fwrite(pixels, sizeof(ColorRGBA8) * size.x * size.y, 1, m_ffmpegPipe);
 	}
 }
+#endif // USE_FFMPEG
 
 void LightCullApp::drawDebugSpheres()
 {
@@ -1366,11 +1374,13 @@ void FIBER_CALL LightCullApp::scriptFiber(void* userPtr)
 	runCommandsFromJsonFile(app->m_scriptName.c_str(), app);
 	app->m_state = State::Idle;
 
+#if USE_FFMPEG
 	if (app->m_ffmpegPipe)
 	{
 		_pclose(app->m_ffmpegPipe);
 		app->m_ffmpegPipe = nullptr;
 	}
+#endif // USE_FFMPEG
 
 	app->m_enableVsync = true;
 	switchToFiber(app->m_mainFiber);
@@ -2304,7 +2314,7 @@ void LightCullApp::generateLightsOnGeometry(u32 count, float minIntensity, float
 		return result;
 	};
 
-	Concurrency::parallel_for<u32>(0, triangleCount, [&](u32 triangleIndex) {
+	parallelFor<u32>(0, triangleCount, [&](u32 triangleIndex) {
 		Triangle tri                   = getTriangle(triangleIndex);
 		float    area                  = computeTriangleArea(tri.a, tri.b, tri.c);
 		Vec3     normal                = computeTriangleNormal(tri.a, tri.b, tri.c);
@@ -2725,8 +2735,8 @@ void LightCullApp::processCommand(const CmdGenerateMeshes& cmd) { generateMeshes
 
 void LightCullApp::processCommand(const CmdCaptureVideo& cmd)
 {
+#if USE_FFMPEG
 	m_captureVideoPath = cmd.path;
-
 	std::stringstream ffmpegCmd;
 	ffmpegCmd << "ffmpeg -r 60 -f rawvideo -pix_fmt rgba "
 	          << "-s " << m_window->getWidth() << "x" << m_window->getHeight() << " "
@@ -2741,6 +2751,9 @@ void LightCullApp::processCommand(const CmdCaptureVideo& cmd)
 	{
 		Log::error("Failed to open ffmpeg pipe");
 	}
+#else // USE_FFMPEG
+	Log::error("Video capture using ffmpeg is not implemented");
+#endif // USE_FFMPEG
 }
 
 void LightCullApp::processCommand(const CmdLoadStaticScene& cmd)

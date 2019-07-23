@@ -23,6 +23,7 @@ find_program(GLSLC NAMES glslc PATHS
 function(shader_compile_rule shaderName dependencies)
 	add_custom_command(
 		OUTPUT ${CMAKE_CFG_INTDIR}/${shaderName}.spv
+		COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CFG_INTDIR}/Shaders
 		COMMAND ${GLSLC} -o ${CMAKE_CFG_INTDIR}/${shaderName}.spv ${CMAKE_CURRENT_SOURCE_DIR}/${shaderName}
 		MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/${shaderName}
 		DEPENDS ${dependencies}
