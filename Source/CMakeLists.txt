@@ -94,3 +94,25 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 		$<TARGET_FILE_DIR:${app}>)
 
 endif()
+
+if(APPLE AND RUSH_VK_RUNTIME_LIBS)
+	set(RUSH_VK_RUNTIME_FILES ${RUSH_VK_RUNTIME_LIBS})
+	if(RUSH_VK_ICD_RUNTIME)
+		list(APPEND RUSH_VK_RUNTIME_FILES "${RUSH_VK_ICD_RUNTIME}")
+	endif()
+
+	set_target_properties(${app} PROPERTIES BUILD_RPATH "@executable_path")
+
+	add_custom_command(TARGET ${app} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			${RUSH_VK_RUNTIME_FILES}
+			"$<TARGET_FILE_DIR:${app}>"
+		COMMENT "Staging MoltenVK runtime"
+		VERBATIM
+	)
+
+	if(CMAKE_GENERATOR MATCHES "Xcode" AND RUSH_VK_ICD_RUNTIME)
+		set_property(TARGET ${app} PROPERTY XCODE_SCHEME_ENVIRONMENT
+			"VK_ICD_FILENAMES=$<TARGET_FILE_DIR:${app}>/MoltenVK_icd_runtime.json")
+	endif()
+endif()

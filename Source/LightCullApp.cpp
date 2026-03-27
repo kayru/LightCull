@@ -59,11 +59,6 @@ int main(int argc, char** argv)
 	}
 #endif // USE_ASSIMP
 
-	GfxConfig gfxConfig(g_appConfig);
-	gfxConfig.preferredCoordinateSystem = GfxConfig::PreferredCoordinateSystem_Direct3D;
-
-	g_appConfig.gfxConfig = &gfxConfig;
-
 	return Platform_Main<LightCullApp>(g_appConfig);
 }
 
@@ -75,7 +70,7 @@ LightCullApp::LightCullApp() : BaseApplication()
 
 	m_mainFiber = convertThreadToFiber();
 
-	createGbuffer(m_window->getSize());
+	createGbuffer(m_window->getFramebufferSize());
 
 	{
 		GfxRasterizerDesc rasterizerDesc;
@@ -431,7 +426,8 @@ void LightCullApp::update()
 
 		if (pendingWindowSize.x > 0 && pendingWindowSize.y > 0)
 		{
-			createGbuffer(pendingWindowSize);
+			Vec2 scale = m_window->getResolutionScale();
+			createGbuffer({int(pendingWindowSize.x * scale.x), int(pendingWindowSize.y * scale.y)});
 		}
 
 		{
@@ -454,7 +450,7 @@ void LightCullApp::update()
 	const GfxCapability& caps = Gfx_GetCapability();
 
 	m_matView = m_currentCamera.buildViewMatrix();
-	m_matProj = m_currentCamera.buildProjMatrix(caps.projectionFlags);
+	m_matProj = m_currentCamera.buildProjMatrix();
 
 	updateLights();
 
@@ -487,12 +483,12 @@ void LightCullApp::transcodeGbuffer()
 
 	Gfx_SetTechnique(m_ctx, m_techniqueGbufferTranscode);
 
-	Gfx_SetSampler(m_ctx, GfxStage::Pixel, 0, m_samplerStates.pointClamp);
+	Gfx_SetSampler(m_ctx, 0, m_samplerStates.pointClamp);
 
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, m_staticGbuffer.depth);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, m_staticGbuffer.albedo);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, m_staticGbuffer.normals);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 3, m_staticGbuffer.specularRM);
+	Gfx_SetTexture(m_ctx, 0, m_staticGbuffer.depth);
+	Gfx_SetTexture(m_ctx,1, m_staticGbuffer.albedo);
+	Gfx_SetTexture(m_ctx,2, m_staticGbuffer.normals);
+	Gfx_SetTexture(m_ctx,3, m_staticGbuffer.specularRM);
 
 	Gfx_Draw(m_ctx, 0, 3);
 
@@ -543,7 +539,7 @@ void LightCullApp::drawGbuffer()
 
 		if (currentMaterial != segment.material)
 		{
-			Gfx_SetSampler(m_ctx, GfxStage::Pixel, 0, m_samplerAniso8);
+			Gfx_SetSampler(m_ctx, 0, m_samplerAniso8);
 
 			if (segment.material != 0xFFFFFFFF)
 			{
@@ -551,9 +547,9 @@ void LightCullApp::drawGbuffer()
 
 				instanceConstants.baseColor = material.baseColor;
 
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, material.albedoTexture);
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, material.normalTexture);
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, material.roughnessTexture);
+				Gfx_SetTexture(m_ctx, 0, material.albedoTexture);
+				Gfx_SetTexture(m_ctx,1, material.normalTexture);
+				Gfx_SetTexture(m_ctx,2, material.roughnessTexture);
 
 				instanceConstants.useNormalMap = material.normalTexture.get() == m_defaultNormalTexture.get() ? 0 : 1;
 			}
@@ -561,9 +557,9 @@ void LightCullApp::drawGbuffer()
 			{
 				instanceConstants.baseColor = Vec4(1.0f);
 
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, m_defaultAlbedoTexture);
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, m_defaultNormalTexture);
-				Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, m_defaultRoughnessTexture);
+				Gfx_SetTexture(m_ctx, 0, m_defaultAlbedoTexture);
+				Gfx_SetTexture(m_ctx,1, m_defaultNormalTexture);
+				Gfx_SetTexture(m_ctx,2, m_defaultRoughnessTexture);
 
 				instanceConstants.useNormalMap = 0;
 			}
@@ -623,7 +619,11 @@ void LightCullApp::buildLighting(GfxContext* ctx)
 	constants.outputWidth    = outputDesc.width;
 	constants.outputHeight   = outputDesc.height;
 	constants.ambientLight   = Vec4(m_ambientTint * m_ambientIntensity);
-	constants.flipClipSpaceY = (!!(caps.projectionFlags & ProjectionFlags::FlipVertical)) ? 0 : 1;
+#ifdef RUSH_PLATFORM_MAC
+	constants.flipClipSpaceY = 1; // Mac: no negative viewport, shader must flip Y
+#else
+	constants.flipClipSpaceY = 0; // negative viewport handles Y-flip
+#endif
 	constants.constantOne    = 1;
 	constants.useShallowTree = m_tiledLightTreeBuilderParams.useShallowTree;
 
@@ -755,12 +755,12 @@ void LightCullApp::applyLighting()
 	// submit data to gpu
 
 	Gfx_SetConstantBuffer(m_ctx, 0, m_lightingConstantBuffer);
-	Gfx_SetSampler(m_ctx, GfxStage::Compute, 0, m_samplerStates.linearClamp);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 0, m_gbufferBaseColor);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 1, m_gbufferNormal);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 2, m_gbufferRoughness);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 3, m_gbufferDepth);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 4, m_falseColorTexture.get());
+	Gfx_SetSampler(m_ctx, 0, m_samplerStates.linearClamp);
+	Gfx_SetTexture(m_ctx, 0, m_gbufferBaseColor);
+	Gfx_SetTexture(m_ctx,1, m_gbufferNormal);
+	Gfx_SetTexture(m_ctx,2, m_gbufferRoughness);
+	Gfx_SetTexture(m_ctx,3, m_gbufferDepth);
+	Gfx_SetTexture(m_ctx,4, m_falseColorTexture.get());
 	Gfx_SetStorageImage(m_ctx, 0, m_finalFrame);
 
 	const u32 debugVisualizationEnabled = m_viewMode == ViewMode::Final ? 0 : 1;
@@ -838,12 +838,12 @@ void LightCullApp::generateTileStats()
 
 	Gfx_SetConstantBuffer(m_ctx, 0, m_lightingConstantBuffer);
 
-	Gfx_SetSampler(m_ctx, GfxStage::Compute, 0, m_samplerStates.linearClamp);
+	Gfx_SetSampler(m_ctx, 0, m_samplerStates.linearClamp);
 
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 0, m_gbufferBaseColor);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 1, m_gbufferNormal);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 2, m_gbufferRoughness);
-	Gfx_SetTexture(m_ctx, GfxStage::Compute, 3, m_gbufferDepth);
+	Gfx_SetTexture(m_ctx, 0, m_gbufferBaseColor);
+	Gfx_SetTexture(m_ctx,1, m_gbufferNormal);
+	Gfx_SetTexture(m_ctx,2, m_gbufferRoughness);
+	Gfx_SetTexture(m_ctx,3, m_gbufferDepth);
 	Gfx_SetStorageImage(m_ctx, 0, m_finalFrame);
 
 	Gfx_SetStorageBuffer(m_ctx, 0, m_lightSourceBuffer);
@@ -937,11 +937,10 @@ void LightCullApp::draw()
 
 	Gfx_AddImageBarrier(m_ctx, m_finalFrame, GfxResourceState_ShaderRead);
 
-	// Draw to back buffer
-	GfxPassDesc passDesc2D;
-	passDesc2D.flags    = GfxPassFlags::ClearColor;
-	passDesc2D.color[0] = Gfx_GetBackBufferColorTexture();
-	Gfx_BeginPass(m_ctx, passDesc2D);
+	// Draw to back buffer (default pass provides back buffer color + depth)
+	GfxPassDesc backBufferPassDesc;
+	backBufferPassDesc.flags = GfxPassFlags::ClearAll;
+	Gfx_BeginPass(m_ctx, backBufferPassDesc);
 
 	Gfx_SetDepthStencilState(m_ctx, m_depthStencilStates.disable);
 	Gfx_SetBlendState(m_ctx, m_blendStates.lerp);
@@ -965,13 +964,6 @@ void LightCullApp::draw()
 	}
 	m_prim->drawTexturedQuad(windowRect);
 	m_prim->end2D();
-
-	Gfx_EndPass(m_ctx);
-
-	GfxPassDesc passDesc3D;
-	passDesc3D.color[0] = Gfx_GetBackBufferColorTexture();
-	passDesc3D.depth    = m_gbufferDepth.get();
-	Gfx_BeginPass(m_ctx, passDesc3D);
 
 	if (!isBenchmarkState(m_state))
 	{
@@ -1262,11 +1254,11 @@ void LightCullApp::drawDebugSpheres()
 	InstanceConstants instanceConstants;
 	instanceConstants.baseColor = Vec4(0.1f);
 
-	Gfx_SetSampler(m_ctx, GfxStage::Pixel, 0, m_samplerAniso8);
+	Gfx_SetSampler(m_ctx, 0, m_samplerAniso8);
 
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 0, m_defaultAlbedoTexture);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 1, m_defaultNormalTexture);
-	Gfx_SetTexture(m_ctx, GfxStage::Pixel, 2, m_defaultRoughnessTexture);
+	Gfx_SetTexture(m_ctx, 0, m_defaultAlbedoTexture);
+	Gfx_SetTexture(m_ctx,1, m_defaultNormalTexture);
+	Gfx_SetTexture(m_ctx,2, m_defaultRoughnessTexture);
 
 	instanceConstants.useNormalMap = 0;
 
@@ -2708,7 +2700,7 @@ void LightCullApp::processCommand(const CmdQuit& cmd)
 void LightCullApp::processCommand(const CmdSetWindowSize& cmd)
 {
 	m_window->setSize({cmd.width, cmd.height});
-	createGbuffer({cmd.width, cmd.height});
+	createGbuffer(m_window->getFramebufferSize());
 }
 
 void LightCullApp::processCommand(const CmdLoadCamera& cmd)

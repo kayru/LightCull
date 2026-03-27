@@ -10,7 +10,7 @@
 #include <assimp/scene.h>
 #endif
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 #define strcpy_s strcpy
 #endif
 

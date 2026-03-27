@@ -42,7 +42,7 @@ ClusteredLightBuildResult ClusteredLightBuilder::build(GfxContext* ctx,
 	const Vec2           resolutionF = Vec2((float)buildParams.resolution.x, (float)buildParams.resolution.y);
 	const GfxCapability& caps        = Gfx_GetCapability();
 
-	const Mat4 matProj = camera.buildProjMatrix(ProjectionFlags::Default);
+	const Mat4 matProj = camera.buildProjMatrix();
 
 	const float cameraNearZ = camera.getNearPlane();
 

@@ -7,7 +7,13 @@
 #include <new>
 #include <string>
 #include <vector>
+#if defined(_MSC_VER) || defined(__SSE__)
 #include <xmmintrin.h>
+#else
+#include <cstdlib>
+inline void* _mm_malloc(size_t size, size_t alignment) { return aligned_alloc(alignment, (size + alignment - 1) & ~(alignment - 1)); }
+inline void _mm_free(void* p) { free(p); }
+#endif
 
 #include <TaskScheduler.h>
 
@@ -128,7 +134,7 @@ inline u32 interlockedIncrement(u32& x)
 #ifdef _MSC_VER
 	return (u32)_InterlockedIncrement(reinterpret_cast<volatile long*>(&x));
 #else
-	return __atomic_add_fetch(reinterpret_cast<volatile long*>(&x), 1, 0);
+	return __atomic_add_fetch(&x, 1u, __ATOMIC_SEQ_CST);
 #endif
 }
 
@@ -137,7 +143,7 @@ inline u16 interlockedIncrement(u16& x)
 #ifdef _MSC_VER
 	return (u16)_InterlockedIncrement16(reinterpret_cast<volatile short*>(&x));
 #else
-	return __atomic_add_fetch(reinterpret_cast<volatile short*>(&x), 1, 0);
+	return __atomic_add_fetch(&x, static_cast<u16>(1), __ATOMIC_SEQ_CST);
 #endif
 }
 

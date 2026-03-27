@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 #define FIBER_CALL
 #else
 #define FIBER_CALL __stdcall

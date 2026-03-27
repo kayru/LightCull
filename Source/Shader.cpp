@@ -78,7 +78,7 @@ void ShaderBingingsBuilder::setResources(GfxContext* ctx, const void* resources)
 
 bool ShaderBingingsBuilder::addConstantBuffer(const char* name, u32 idx)
 {
-	desc.constantBuffers++;
+	desc.descriptorSets[0].constantBuffers++;
 
 	Item it;
 	it.name  = name;
@@ -91,7 +91,7 @@ bool ShaderBingingsBuilder::addConstantBuffer(const char* name, u32 idx)
 
 bool ShaderBingingsBuilder::addTexture(const char* name, u32 idx)
 {
-	desc.textures++;
+	desc.descriptorSets[0].textures++;
 
 	Item it;
 	it.name  = name;
@@ -104,7 +104,7 @@ bool ShaderBingingsBuilder::addTexture(const char* name, u32 idx)
 
 bool ShaderBingingsBuilder::addSampler(const char* name, u32 idx)
 {
-	desc.samplers++;
+	desc.descriptorSets[0].samplers++;
 
 	Item it;
 	it.name  = name;
@@ -117,7 +117,7 @@ bool ShaderBingingsBuilder::addSampler(const char* name, u32 idx)
 
 bool ShaderBingingsBuilder::addStorageImage(const char* name, u32 idx)
 {
-	desc.rwImages++;
+	desc.descriptorSets[0].rwImages++;
 
 	Item it;
 	it.name  = name;
@@ -130,7 +130,7 @@ bool ShaderBingingsBuilder::addStorageImage(const char* name, u32 idx)
 
 bool ShaderBingingsBuilder::addRWBuffer(const char* name, u32 idx)
 {
-	desc.rwBuffers++;
+	desc.descriptorSets[0].rwBuffers++;
 
 	Item it;
 	it.name  = name;
@@ -143,7 +143,7 @@ bool ShaderBingingsBuilder::addRWBuffer(const char* name, u32 idx)
 
 bool ShaderBingingsBuilder::addTypedRWBuffer(const char* name, u32 idx)
 {
-	desc.rwTypedBuffers++;
+	desc.descriptorSets[0].rwTypedBuffers++;
 
 	Item it;
 	it.name  = name;
@@ -159,7 +159,7 @@ bool ShaderBingingsBuilder::addPushConstants(const char* name, GfxStageFlags sta
 	RUSH_ASSERT(stageFlags == GfxStageFlags::Vertex ||
 	            stageFlags == GfxStageFlags::Compute); // only vertex and compute push constants are implemented
 
-	desc.pushConstants          = size;
+	desc.pushConstantSize       = size;
 	desc.pushConstantStageFlags = stageFlags;
 
 	Item it;

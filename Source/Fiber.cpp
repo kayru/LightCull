@@ -1,8 +1,7 @@
 #include "Fiber.h"
 #include <Rush/UtilLog.h>
 
-#ifdef __linux__
-#include <ucontext.h>
+#if defined(__linux__) || defined(__APPLE__)
 
 void* convertThreadToFiber()
 {

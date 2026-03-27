@@ -144,6 +144,7 @@ inline float computeExponentialSliceDepth(u32 sliceIndex, float maxDepth, u32 sl
 
 inline Vec3 transformPoint(const Mat4& m, const Vec3& p)
 {
+#if defined(__SSE__)
 	__m128 X = _mm_mul_ps(_mm_set1_ps(p.x), _mm_loadu_ps(&m.rows[0].x));
 	__m128 Y = _mm_mul_ps(_mm_set1_ps(p.y), _mm_loadu_ps(&m.rows[1].x));
 	__m128 Z = _mm_mul_ps(_mm_set1_ps(p.z), _mm_loadu_ps(&m.rows[2].x));
@@ -155,12 +156,19 @@ inline Vec3 transformPoint(const Mat4& m, const Vec3& p)
 
 	alignas(16) Vec4 res;
 	_mm_store_ps(&res.x, r);
+#else
+	Vec4 res;
+	res.x = p.x * m.rows[0].x + p.y * m.rows[1].x + p.z * m.rows[2].x + m.rows[3].x;
+	res.y = p.x * m.rows[0].y + p.y * m.rows[1].y + p.z * m.rows[2].y + m.rows[3].y;
+	res.z = p.x * m.rows[0].z + p.y * m.rows[1].z + p.z * m.rows[2].z + m.rows[3].z;
+#endif
 
 	return res.xyz();
 }
 
 inline Vec4 projectPoint(const Mat4& m, const Vec3& p)
 {
+#if defined(__SSE__)
 	__m128 X = _mm_mul_ps(_mm_set1_ps(p.x), _mm_loadu_ps(&m.rows[0].x));
 	__m128 Y = _mm_mul_ps(_mm_set1_ps(p.y), _mm_loadu_ps(&m.rows[1].x));
 	__m128 Z = _mm_mul_ps(_mm_set1_ps(p.z), _mm_loadu_ps(&m.rows[2].x));
@@ -175,6 +183,18 @@ inline Vec4 projectPoint(const Mat4& m, const Vec3& p)
 
 	alignas(16) Vec4 res;
 	_mm_store_ps(&res.x, r);
+#else
+	Vec4 res;
+	res.x = p.x * m.rows[0].x + p.y * m.rows[1].x + p.z * m.rows[2].x + m.rows[3].x;
+	res.y = p.x * m.rows[0].y + p.y * m.rows[1].y + p.z * m.rows[2].y + m.rows[3].y;
+	res.z = p.x * m.rows[0].z + p.y * m.rows[1].z + p.z * m.rows[2].z + m.rows[3].z;
+	res.w = p.x * m.rows[0].w + p.y * m.rows[1].w + p.z * m.rows[2].w + m.rows[3].w;
+	const float rcpW = 1.0f / res.w;
+	res.x *= rcpW;
+	res.y *= rcpW;
+	res.z *= rcpW;
+	res.w = 1.0f;
+#endif
 
 	return res;
 }

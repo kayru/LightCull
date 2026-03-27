@@ -116,18 +116,19 @@ static void ImGuiImpl_Render(ImDrawData* drawData)
 				verts[i].col   = ColorRGBA8(v.col);
 			}
 
+			Vec2 scale = s_window->getResolutionScale();
 			GfxRect scissor;
 
 #ifdef RUSH_OPENGL
-			scissor.top    = s_window->getHeight() - (int)cmd.ClipRect.w;
-			scissor.bottom = s_window->getHeight() - (int)cmd.ClipRect.y;
+			scissor.top    = s_window->getFramebufferHeight() - (int)(cmd.ClipRect.w * scale.y);
+			scissor.bottom = s_window->getFramebufferHeight() - (int)(cmd.ClipRect.y * scale.y);
 #else
-			scissor.top    = (int)cmd.ClipRect.y;
-			scissor.bottom = (int)cmd.ClipRect.w;
+			scissor.top    = (int)(cmd.ClipRect.y * scale.y);
+			scissor.bottom = (int)(cmd.ClipRect.w * scale.y);
 #endif
 
-			scissor.left  = (int)cmd.ClipRect.x;
-			scissor.right = (int)cmd.ClipRect.z;
+			scissor.left  = (int)(cmd.ClipRect.x * scale.x);
+			scissor.right = (int)(cmd.ClipRect.z * scale.x);
 
 			Gfx_SetScissorRect(s_context, scissor);
 			s_prim->flush();

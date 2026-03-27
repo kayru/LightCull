@@ -76,7 +76,7 @@ static const LightTreeLutItem g_lightTreeLut[] =
 
 const LightTreeLutItem* getLightTreeLut(u32 index)
 {
-	RUSH_ASSERT(index < TiledLightTreeBuilder::MaxBottomUpTreeLevels)
+	RUSH_ASSERT(index < TiledLightTreeBuilder::MaxBottomUpTreeLevels);
 	static const int lutOffsets[] = {0, 1, 4, 11, 26, 57, 120};
 	return &g_lightTreeLut[lutOffsets[index]];
 }
@@ -426,7 +426,7 @@ TiledLightTreeBuildResult TiledLightTreeBuilder::build(GfxContext* ctx,
 	const Vec2           resolutionF = Vec2((float)resolution.x, (float)resolution.y);
 	const GfxCapability& caps        = Gfx_GetCapability();
 
-	const Mat4 matProj = camera.buildProjMatrix(ProjectionFlags::Default);
+	const Mat4 matProj = camera.buildProjMatrix();
 
 	const float cameraNearZ = camera.getNearPlane();
 
